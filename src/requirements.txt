@@ -1,0 +1,6 @@
+boto3
+rsa
+pyjwt
+attrs
+requests
+structlog

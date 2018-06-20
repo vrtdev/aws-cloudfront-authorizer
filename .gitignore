@@ -1,0 +1,8 @@
+/venv
+/build
+/build.zip
+/.idea
+/.pytest_cache
+/*.iml
+
+__pycache__

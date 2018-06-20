@@ -1,0 +1,95 @@
+@startuml
+
+participant browser
+participant "possibly different browser" as browser2
+participant "vrt authorizer" as auth
+participant "Cognito / ADFS" as cognito
+participant "Restricted site" as stag
+
+group Initial request
+
+alt Not logged in
+
+browser -> auth: GET /
+note right of auth: index.py
+browser <- auth: 302 cognito
+
+browser --> cognito: authenticate
+...authentication...
+browser <- cognito: 302 authorizer/?code=12345
+
+browser -> auth: GET /?code=12345
+note right of auth: index.py
+auth -> cognito: POST /oauth2/cognito_token: code
+auth <- cognito: id_token, access_token, refresh_token
+hnote over auth: verify id_token, convert to JWT
+browser <- auth: 200 HTML + JS\nSet-Cookie: vrt_authorizer_login=JWT(username)
+
+else Logged in
+
+browser -> auth: GET /\nCookie: vrt_authorizer_login=JWT(username)
+note right of auth: index.py
+browser <- auth: 200 HTML + JS
+
+end
+
+browser -> auth: XHR: GET /domain_list\nCookie: vrt_authorizer_login=JWT(username)
+note right of auth: domain_list.py
+browser <- auth: 200 JSON
+
+end
+
+
+note over browser: User selects domains & duration
+
+
+group Request token
+
+browser -> auth: POST /request_access\nCookie: vrt_authorizer_login=JWT(username)\nData: exp=1234&domain1=checked&domain2=checked&...
+note right of auth: request_access.py
+browser <- auth: 200 URL_from(JWT(username, domains, exp))
+
+end
+
+
+note over browser
+    Present link to user
+    either to visit themselves
+    or to copy/paste it to a 3rd party
+end note
+
+create browser2
+browser -> browser2: Copy/visit URL
+
+group Set cookies
+
+browser2 -> auth: GET /grant_access?token=JWT(username, domains, exp)
+note right of auth: grant_access.py\nset cookie on authorizer domain
+browser2 <- auth: 200 HTML with links per domain\nSet-Cookie: vrt_authorizer_access=JWT(username, domains, exp)
+
+end
+
+group Visit restricted site
+
+alt First visit
+browser2 -> stag: GET domain-name/whatever
+note right of stag: Custom CloudFront error page:\n/auth-UUID/forbidden
+note right of auth: forbidden.py\ncapture URL of 403, redirect to authorizer
+browser2 <- auth: 403 HTML + JS\nJS performs redirect
+
+browser2 -> auth: GET authorizer/verify_access?return_to=domain-name/whatever\nCookie: vrt_authorizer_access=JWT(username, domains, exp)
+note right of auth: verify_access.py\ncheck cookie set on authorizer domain, convert to query parameter
+browser2 <- auth: 302 domain-name/auth-UUID/set-cookie?domain=domain-name&token=JWT()&return_to=domain-name/whatever
+
+browser2 -> stag: GET domain-name/auth-UUID/set-cookie?domain=domain-name&token=JWT()&return_to=domain-name/whatever
+note right of stag: Origin: authorizer
+note right of auth: set_cookie.py
+browser2 <- auth: 302 HTML\nSet-Cookie: CloudFront-Policy=xxx\nSet-Cookie: CloudFront-Signature=xxx\nLocation: domain-name/whatever
+end
+
+browser2 -> stag: GET domain-name/whatever\nCookie: CloudFront-Policy=xxx
+browser2 <- stag: 200
+
+end
+
+@enduml

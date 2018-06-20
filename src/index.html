@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<h1>Hello World</h1>
+<form method="post" action="request_access">
+    <input type="submit"/>
+    <input type="text" name="exp"/>
+    <div id="domains"></div>
+</form>
+<script type="application/javascript">
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState == 4 && xhr.status == 200)
+            var div = document.getElementById('domains');
+            var domains = JSON.parse(xhr.responseText);
+
+            for(var domain in domains) {
+                var el = document.createElement('label');
+                var cb = document.createElement('input');
+                cb.name = domains[domain];
+                cb.type = "checkbox";
+                cb.checked = "checked";
+                el.appendChild(cb);
+                el.appendChild(document.createTextNode(domains[domain]));
+                div.appendChild(el);
+            }
+    };
+    xhr.open("GET", 'domain_list', true);
+    xhr.send(null);
+</script>
+</body>
+</html>
