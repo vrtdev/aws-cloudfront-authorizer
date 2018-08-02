@@ -32,6 +32,9 @@ if [ ! -f "venv/bin/pip" ]; then
     # create venv only if not already there
     python3 -m venv venv
 fi
+
+# make sure build tools are up to date
+venv/bin/pip install --upgrade wheel pip
 venv/bin/pip install -r "${SRC_DIR}/requirements.txt" -t "${BUILD_DIR}"
 
 (

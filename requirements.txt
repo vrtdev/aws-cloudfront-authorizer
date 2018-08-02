@@ -1,5 +1,5 @@
 -r src/requirements.txt
 invoke
 troposphere
--e git+ssh://git@git.vrt.be:7999/dpcops/aws-cloudformation-helpers.git@master#egg=central-helpers
--e git+ssh://git@git.vrt.be:7999/dpcops/aws-custom-resources.git@master#egg=custom_resources
+git+ssh://git@git.vrt.be:7999/dpcops/aws-cloudformation-helpers.git@master#egg=central-helpers
+git+ssh://git@git.vrt.be:7999/dpcops/aws-custom-resources.git@master#egg=custom_resources
