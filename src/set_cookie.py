@@ -22,58 +22,24 @@ import jwt
 import rsa
 import structlog
 
-from utils import aws_web_safe_base64_encode, get_jwt_secret, generate_case_variants, generate_cookie
+from utils import aws_web_safe_base64_encode, get_jwt_secret, generate_case_variants, generate_cookie, \
+    VRT_AUTH_ACCESS_COOKIE_NAME
 
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
 
 
-def generate_policy(domain: str, expire: int) -> dict:
-    policy = {
-        'Statement': [
-            {
-                'Resource': f"https://{domain}/*",
-                'Condition': {
-                    'DateLessThan': {'AWS:EpochTime': expire},
-                }
-            }
-        ]
-    }
-    return policy
-
-
-@functools.lru_cache(maxsize=1)
-def get_key_id() -> str:
-    # Don't do this at the module level
-    # That would make running tests with Mocked SSM much harder
-    key_id = boto3.client('ssm').get_parameter(
-        Name=os.environ['KEY_ID_PARAMETER_NAME'],
-    )
-    key_id = key_id['Parameter']['Value']
-    return key_id
-
-
-@functools.lru_cache(maxsize=1)
-def get_private_key() -> rsa.PrivateKey:
-    # Don't do this at the module level
-    # That would make running tests with Mocked SSM much harder
-    _private_key = boto3.client('ssm').get_parameter(
-        Name=os.environ['PRIVATE_KEY_PARAMETER_NAME'],
-        WithDecryption=True,
-    )
-    _private_key = rsa.PrivateKey.load_pkcs1(_private_key['Parameter']['Value'])
-    return _private_key
-
-
 @attr.s(slots=True, auto_attribs=True)
 class SetCookieRequest:
+    raw_token: str
     domain: str
     expire: int
     return_to: str
 
 
 def validate_request(event: dict) -> SetCookieRequest:
+    raw_token = event['queryStringParameters']['token']
     policy = jwt.decode(
-        event['queryStringParameters']['token'],
+        raw_token,
         get_jwt_secret(),
         algorithms=['HS256']
     )
@@ -88,6 +54,7 @@ def validate_request(event: dict) -> SetCookieRequest:
     return_to = event['queryStringParameters'].get('return_to', None)
 
     return SetCookieRequest(
+        raw_token=raw_token,
         domain=domain,
         expire=expire,
         return_to=return_to,
@@ -95,23 +62,10 @@ def validate_request(event: dict) -> SetCookieRequest:
 
 
 def generate_cookie_headers(request: SetCookieRequest) -> typing.List[str]:
-    policy = generate_policy(request.domain, request.expire)
-    structlog.get_logger().log("Generating signed cookies", policy=policy)
-
-    policy_b = json.dumps(policy, indent=None, separators=(',', ':')).encode('utf-8')
-
-    signature_b = rsa.sign(policy_b, get_private_key(), 'SHA-1')
-    # TODO: rsa.sign() is really slow on Lambda (3 seconds per call) => optimize this by changing to Cryptography
-    # once we have the infrastructure to build dynamic loadable objects for Lambda
-
     expire_in = int(request.expire - time.time())
 
     return [
-        generate_cookie('CloudFront-Key-Pair-Id', get_key_id(),
-                        max_age=expire_in, path='/'),
-        generate_cookie('CloudFront-Policy', aws_web_safe_base64_encode(policy_b),
-                        max_age=expire_in, path='/'),
-        generate_cookie('CloudFront-Signature', aws_web_safe_base64_encode(signature_b),
+        generate_cookie(VRT_AUTH_ACCESS_COOKIE_NAME, request.raw_token,
                         max_age=expire_in, path='/'),
     ]
 
