@@ -67,25 +67,12 @@ example_distribution = template.add_resource(cloudfront.Distribution(
         ],
         DefaultCacheBehavior=cloudfront.DefaultCacheBehavior(
             ViewerProtocolPolicy='redirect-to-https',  # HTTPS required. Cookies need to be sent securely
-            TrustedSigners=[ImportValue(Sub('${' + authorizer_stack.title + '}-trusted-account'))],
             # Rest of config as per your needs
             TargetOriginId='RealOrigin',
             ForwardedValues=cloudfront.ForwardedValues(
                 QueryString=True,
             ),
         ),
-        CustomErrorResponses=[
-            cloudfront.CustomErrorResponse(
-                # Catch cloudfront 403's and try to authenticate user.
-                # WARNING: this may interfere with your own 403's...
-                ErrorCode=403,
-                ResponseCode=403,
-                ResponsePagePath=Join('', [
-                    ImportValue(Sub('${' + authorizer_stack.title + '}-magic-path')),
-                    '/forbidden',
-                ]),
-            )
-        ],
     ),
     Tags=Tags(**vrt_tags),
 ))

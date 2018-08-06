@@ -1,8 +1,5 @@
 """
 VRT authorizer stack
-
-Manual steps needed after deploy:
- * Fill in cf-rsa-key (RSA key) and cf-rsa-key-id (key ID)
 """
 from central_helpers import MetadataHelper, write_template_to_file, \
     kms as kms_helpers, resource2var, mappings
@@ -58,14 +55,6 @@ param_use_cert = template.add_parameter(Parameter(
 ))
 template_helper.add_parameter_label(param_use_cert, "Use TLS certificate")
 
-param_trusted_account = template.add_parameter(Parameter(
-    "TrustedAccount",
-    Type=constants.STRING,
-    Default='387323646340',
-    Description="AWS account number of trusted account",
-))
-template_helper.add_parameter_label(param_trusted_account, "Trusted Account")
-
 
 magic_path = '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220'
 
@@ -112,6 +101,13 @@ lambda_role = template.add_resource(iam.Role(
                     "Service": "lambda.amazonaws.com"
                 },
                 "Action": "sts:AssumeRole"
+            },
+            {
+                "Effect": "Allow",
+                "Principal": {
+                    "Service": "edgelambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
             }
         ]
     },
@@ -138,6 +134,12 @@ lambda_role = template.add_resource(iam.Role(
             },
         ),
     ],
+))
+
+template.add_output(Output(
+    "LambdaRoleArn",
+    Description='Lambda Role ARN',
+    Value=GetAtt(lambda_role, 'Arn'),
 ))
 
 vrt_auth_key = template.add_resource(kms.Key(
@@ -202,24 +204,6 @@ jwt_secret_parameter = template.add_resource(custom_ssm_ps.ParameterStoreParamet
     Tags=Tags(**vrt_tags),
 ))
 
-cf_rsa_key_parameter = template.add_resource(custom_ssm_ps.ParameterStoreParameter(
-    "CfRsaKeyParameter",
-    split_stacks=True, ServiceToken=stack_linker.CRST_ParameterStoreParameter,
-    Name=Sub('/${AWS::StackName}/cf-rsa-key'),
-    Type="SecureString",
-    KeyId=Ref(vrt_auth_key),
-    RandomValue={"Serial": '1'},  # Change this to force a new random value
-    Tags=Tags(**vrt_tags),
-))
-
-cf_rsa_key_id_parameter = template.add_resource(ssm.Parameter(
-    "CfRsaKeyIdParameter",
-    Name=Sub('/${AWS::StackName}/cf-rsa-key-id'),
-    Type="String",
-    Value="A123",
-    #Tags=Tags(**vrt_tags),
-))
-
 template.add_resource(iam.PolicyType(
     "LambdaSharedSecretParamPermission",
     Roles=[Ref(lambda_role)],
@@ -237,7 +221,7 @@ template.add_resource(iam.PolicyType(
                     "arn:aws:ssm:${{AWS::Region}}:${{AWS::AccountId}}:parameter{param}".format(
                         param=resource2var(p)
                     ))
-                for p in (jwt_secret_parameter, cf_rsa_key_parameter, cf_rsa_key_id_parameter)
+                for p in [jwt_secret_parameter]
             ],
         }]
     }
@@ -253,8 +237,6 @@ common_lambda_options = {
             "COGNITO_CLIENT_ID": Ref(cognito_user_pool_client),
             "COGNITO_CLIENT_SECRET": GetAtt(cognito_user_pool_client, 'ClientSecret'),
             "JWT_SECRET_PARAMETER_NAME": Ref(jwt_secret_parameter),
-            "KEY_ID_PARAMETER_NAME": Ref(cf_rsa_key_id_parameter),
-            "PRIVATE_KEY_PARAMETER_NAME": Ref(cf_rsa_key_parameter),
             "DOMAIN_NAME": Ref(param_domain_name),
             "MAGIC_PATH": magic_path,
         }
@@ -382,13 +364,6 @@ template.add_output(Output(
     Description='Magic path',
     Value=magic_path,
     Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'magic-path'])),
-))
-
-template.add_output(Output(
-    "TrustedAccount",
-    Description="AWS account who's keys are used to sign",
-    Value=Ref(param_trusted_account),
-    Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'trusted-account'])),
 ))
 
 acm_cert = template.add_resource(DnsValidatedCertificate(

@@ -1,6 +1,7 @@
 {
   "name": "lambdaatedge",
   "dependencies": {
+    "aws-sdk": "^2.286.2",
     "jsonwebtoken": "^8.3.0"
   }
 }
