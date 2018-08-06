@@ -1,7 +1,9 @@
 {
   "name": "lambdaatedge",
   "dependencies": {
-    "aws-sdk": "^2.286.2",
     "jsonwebtoken": "^8.3.0"
+  },
+  "dependenciesCOMMENT": {
+    "aws-sdk": "also required, but is already installed on λ@E. Also, this boost our size up beyond the allowed 1MB."
   }
 }

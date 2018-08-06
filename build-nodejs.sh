@@ -29,6 +29,7 @@ cp -a "${SRC_DIR}/" "${BUILD_DIR}"
 
 (
     cd "${BUILD_DIR}"
+    rm -rf node_modules || true
     npm install
     # Optionally clean up caches
     zip "${OUT_FILE}" -r .

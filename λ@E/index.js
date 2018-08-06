@@ -9,7 +9,7 @@
  */
 
 "use strict";
-const jwt = require('jsonwebtoken');
+const JWT = require('jsonwebtoken');
 const AWS = require('aws-sdk');
 
 // TODO: these should not be hard coded
@@ -105,7 +105,7 @@ function has_valid_cookie(request, cb) {
 
     const cookie_value = cookies[cookie_name];
 
-    jwt.verify(
+    JWT.verify(
         cookie_value,
         get_jwt_secret,
         {

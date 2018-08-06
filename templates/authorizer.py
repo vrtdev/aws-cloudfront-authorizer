@@ -97,15 +97,12 @@ lambda_role = template.add_resource(iam.Role(
         "Statement": [
             {
                 "Effect": "Allow",
+                # Lambda@Edge uses a different principal than normal lambda
                 "Principal": {
-                    "Service": "lambda.amazonaws.com"
-                },
-                "Action": "sts:AssumeRole"
-            },
-            {
-                "Effect": "Allow",
-                "Principal": {
-                    "Service": "edgelambda.amazonaws.com"
+                    "Service": [
+                        "lambda.amazonaws.com",
+                        "edgelambda.amazonaws.com"
+                    ]
                 },
                 "Action": "sts:AssumeRole"
             }

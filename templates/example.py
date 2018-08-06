@@ -1,6 +1,6 @@
 from central_helpers import MetadataHelper, write_template_to_file
 from central_helpers.vrt import add_tags, StackLinker
-from troposphere import Template, Tags, cloudfront, constants, ImportValue, Sub, Join, Parameter
+from troposphere import Template, Tags, cloudfront, constants, ImportValue, Sub, Join, Parameter, Ref
 
 template = Template()
 
@@ -13,6 +13,13 @@ authorizer_stack = template.add_parameter(Parameter(
     "AuthorizerStack",
     Type=constants.STRING,
     Description="Authorizer stack to import from",
+))
+
+param_authorizer_lae_arn = template.add_parameter(Parameter(
+    "AuthorizerLaeArn",
+    Type=constants.STRING,
+    Default='arn:aws:lambda:us-east-1:000000000000:function:xxx:1',
+    Description="Lambda@Edge ARN for validation (must be a specific version in us-east-1)",
 ))
 
 example_distribution = template.add_resource(cloudfront.Distribution(
@@ -67,6 +74,12 @@ example_distribution = template.add_resource(cloudfront.Distribution(
         ],
         DefaultCacheBehavior=cloudfront.DefaultCacheBehavior(
             ViewerProtocolPolicy='redirect-to-https',  # HTTPS required. Cookies need to be sent securely
+            LambdaFunctionAssociations=[
+                cloudfront.LambdaFunctionAssociation(
+                    EventType='viewer-request',
+                    LambdaFunctionARN=Ref(param_authorizer_lae_arn)
+                ),
+            ],
             # Rest of config as per your needs
             TargetOriginId='RealOrigin',
             ForwardedValues=cloudfront.ForwardedValues(
