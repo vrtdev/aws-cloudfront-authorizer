@@ -4,5 +4,8 @@
 /.idea
 /.pytest_cache
 /*.iml
+/λ@E/node_modules
+/λ@E/package-lock.json
+/output
 
 __pycache__
