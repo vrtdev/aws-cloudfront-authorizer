@@ -25,7 +25,7 @@ rm -f "${OUT_FILE}"
 
 BUILD_DIR=`mktemp -d 2>/dev/null || mktemp -d -t 'build'`  # Linux & BSD-compatible
 
-cp -a "${SRC_DIR}/" "${BUILD_DIR}"
+cp -a "${SRC_DIR}/." "${BUILD_DIR}"
 
 # Possibly re-use venv from ./test.sh
 if [ ! -f "venv/bin/pip" ]; then
