@@ -37,45 +37,6 @@ JMWqms4YOivO8GcehLfBjAu1ebtq96l5sgQp23zwMNNa7G4YnBVXAgMBAAE=
 }
 
 
-def test_policy():
-    policy = set_cookie.generate_policy('*', 12345)
-    assert policy['Statement'][0]['Resource'] == 'https://*/*'
-    assert policy['Statement'][0]['Condition']['DateLessThan']['AWS:EpochTime'] == 12345
-
-
-def test_load_private_key():
-    class DummyClient:
-        instances_created = 0
-
-        def __init__(self, name, *_args, **_kwargs):
-            assert self.__class__.instances_created == 0
-            self.__class__.instances_created = self.__class__.instances_created + 1
-
-            assert name == 'ssm'
-
-            self.get_parameter_called = 0
-
-        def get_parameter(self, **_kwargs):
-            assert self.get_parameter_called == 0
-            self.get_parameter_called = self.get_parameter_called + 1
-            return {
-                'Parameter': {
-                    'Value': test_keypair['private'],
-                }
-            }
-
-    with mock.patch('boto3.client', new=DummyClient):
-        os.environ['PRIVATE_KEY_PARAMETER_NAME'] = 'dummy value'
-        private_key = set_cookie.get_private_key()
-
-        # Request again, should return from cache and not call
-        _ = set_cookie.get_private_key()
-
-    test_signed = rsa.sign(b'test', private_key, 'SHA-1')
-    public_key = rsa.PublicKey.load_pkcs1(test_keypair['public'])
-    assert rsa.verify(b'test', test_signed, public_key)
-
-
 def test_validate():
     with mock.patch('src.set_cookie.get_jwt_secret') as jwt_s:
         jwt_s.return_value = 'foobar'
@@ -146,9 +107,9 @@ def test_validate():
 
 
 def test_handler():
-    with mock.patch('src.set_cookie.validate_request') as vr, \
-            mock.patch('src.set_cookie.get_key_id', return_value="KP12345"):
+    with mock.patch('src.set_cookie.validate_request') as vr:
         vr.return_value = set_cookie.SetCookieRequest(
+            raw_token='xxxxxxxx',
             domain='example.org',
             expire=int(time.time()),
             return_to=None,
@@ -162,16 +123,14 @@ def test_handler():
         for k, v in ret['headers'].items():
             if k.lower() == 'set-cookie':
                 set_cookie_headers.append(v)
-        assert len(set_cookie_headers) == 3
+        assert len(set_cookie_headers) == 1
 
 
 def test_generate_cookies():
-    with mock.patch('src.set_cookie.get_key_id', return_value='KP12345'), \
-            mock.patch('src.set_cookie.get_private_key',
-                       return_value=rsa.PrivateKey.load_pkcs1(test_keypair['private'])):
-        cookies = set_cookie.generate_cookie_headers(set_cookie.SetCookieRequest(
-            domain='example.org',
-            expire=int(time.time()),
-            return_to=None,
-        ))
-        assert len(cookies) == 3
+    cookies = set_cookie.generate_cookie_headers(set_cookie.SetCookieRequest(
+        raw_token='xxxxxxxx',
+        domain='example.org',
+        expire=int(time.time()),
+        return_to=None,
+    ))
+    assert len(cookies) == 1
