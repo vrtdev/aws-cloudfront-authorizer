@@ -1,9 +1,10 @@
 """Configures all tasks to run with invoke."""
 
-from invoke import task
+import fnmatch
 import glob
 import os
-import fnmatch
+
+from invoke import task
 
 
 @task(
@@ -62,3 +63,24 @@ def lint(ctx, filename=None, envdir='venv', noglob=False):
 
     print("Running command: '" + command + "'")
     ctx.run(command)
+
+
+@task(help={
+    'docs': "Remove generated docs",
+    'verbose': "Show which files are being removed.",
+    'compiled': 'Also clean up compiled python files.',
+})
+def clean(ctx, verbose=False, compiled=False):
+    """Clean up all output files."""
+    command = "rm -rvf {files}" if verbose else "rm -rf {files}"
+
+    patterns = []
+    patterns.append('output/*.json')
+    patterns.append('output/*/*.json')
+    if compiled is True:
+        for root, dirnames, filenames in os.walk('.'):
+            for filename in fnmatch.filter(filenames, '*.pyc'):
+                patterns.append(os.path.join(root, filename))
+
+    for pattern in patterns:
+        ctx.run(command.format(files=pattern))
