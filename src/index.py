@@ -22,6 +22,7 @@ from cognito_utils import validate_cognito_id_token
 from utils import VRT_AUTH_LOGIN_COOKIE_NAME, get_jwt_secret, validate_login_cookie, NotLoggedInError, generate_cookie, \
     main_url
 
+
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
 
 

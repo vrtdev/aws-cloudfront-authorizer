@@ -60,7 +60,7 @@ magic_path = '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220'
 
 cognito_user_pool = template.add_resource(cognito.UserPool(
     "CognitoUserPool",
-    UserPoolName="StagingAccess",
+    UserPoolName=Sub("StagingAccess${AWS::StackName}"),
     UserPoolTags=vrt_tags,
 ))
 
@@ -141,7 +141,7 @@ template.add_output(Output(
 
 vrt_auth_key = template.add_resource(kms.Key(
     "VrtAuthKey",
-    Description="Key for VRT-authorizer in ${AWS::StackName}",
+    Description=Sub("Key for VRT-authorizer in ${AWS::StackName}"),
     KeyPolicy={
         "Version": "2012-10-17",
         "Statement": [
@@ -199,6 +199,21 @@ jwt_secret_parameter = template.add_resource(custom_ssm_ps.ParameterStoreParamet
     KeyId=Ref(vrt_auth_key),
     RandomValue={"Serial": '1'},  # Change this to force a new random value
     Tags=Tags(**vrt_tags),
+))
+
+lae_arn = template.add_resource(custom_ssm_ps.ParameterStoreParameter(
+    "LaeArn",
+    split_stacks=True, ServiceToken=stack_linker.CRST_ParameterStoreParameter,
+    Name=Sub('/${AWS::StackName}/lae-arn'),
+    Type="String",
+    Value="TO BE FILLED IN BY JENKINS",
+    Tags=Tags(**vrt_tags),
+))
+template.add_output(Output(
+    "LaeArnParameter",
+    Description='SSM Parameter containing the Lambda@Edge ARN',
+    Value=Ref(lae_arn),
+    Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'lae-arn'])),
 ))
 
 template.add_resource(iam.PolicyType(

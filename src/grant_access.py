@@ -13,6 +13,7 @@ import structlog
 
 from utils import get_jwt_secret, generate_cookie, VRT_AUTH_ACCESS_COOKIE_NAME
 
+
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
 
 

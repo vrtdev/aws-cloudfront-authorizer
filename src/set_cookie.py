@@ -2,7 +2,7 @@
 Lambda function to issue CloudFront cookies granting access.
 
 Required GET-parameters:
-  - token: JWT containing the autorization of the user
+  - token: JWT containing the authorization of the user
   - domain: domain to create cookie for. The domain must be listed in the JWT,
             otherwise, the request is denied (400, bad request)
 
@@ -10,20 +10,15 @@ Note that this Lambda needs to be called on the correct domain in order for the
 browser to actually set the cookie on the corresponding domain.
 """
 
-import functools
-import json
-import os
 import time
 import typing
 
 import attr
-import boto3
 import jwt
-import rsa
 import structlog
 
-from utils import aws_web_safe_base64_encode, get_jwt_secret, generate_case_variants, generate_cookie, \
-    VRT_AUTH_ACCESS_COOKIE_NAME
+from utils import get_jwt_secret, generate_case_variants, generate_cookie, VRT_AUTH_ACCESS_COOKIE_NAME
+
 
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
 

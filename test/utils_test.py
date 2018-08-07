@@ -3,7 +3,6 @@ from unittest import mock
 import jwt
 
 from src import utils
-from utils import url_origin
 
 
 def test_case_variants():
@@ -60,4 +59,4 @@ def test_validate_cookie():
 
 
 def test_origin():
-    assert url_origin('https://foobar.com/whatever') == 'https://foobar.com'
+    assert utils.url_origin('https://foobar.com/whatever') == 'https://foobar.com'

@@ -1,5 +1,4 @@
 import functools
-from binascii import a2b_base64
 
 import jwt
 import requests

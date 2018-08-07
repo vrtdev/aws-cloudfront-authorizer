@@ -11,4 +11,4 @@ python3 -m venv venv
 venv/bin/pip install -r requirements.txt
 venv/bin/pip install -r test-requirements.txt
 
-venv/bin/python -m pytest -v
+PYTHONPATH="${PYTHONPATH:-}${PYTHONPATH+:}src" venv/bin/python -m pytest -v

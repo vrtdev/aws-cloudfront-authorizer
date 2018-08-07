@@ -23,6 +23,7 @@ import structlog
 
 from utils import get_jwt_secret, validate_login_cookie, NotLoggedInError, main_url
 
+
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
 
 

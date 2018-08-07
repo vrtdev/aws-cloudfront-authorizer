@@ -35,3 +35,30 @@ def build(ctx, warnings='once::DeprecationWarning', filename=None):
         if subprocess.call([sys.executable, '-W{0}'.format(warnings), '{0}'.format(template)]) != 0:
             rv = 1
     exit(rv)
+
+
+@task(
+    aliases=["flake8", "pep8"],
+    help={
+        'filename': 'File(s) to lint. Supports globbing.',
+        'envdir': 'Specify the python virtual env dir to ignore. Defaults to "venv".',
+        'noglob': 'Disable globbing of filenames. Can give issues in virtual environments',
+    },
+)
+def lint(ctx, filename=None, envdir='venv', noglob=False):
+    """Run flake8 python linter."""
+    command = 'flake8 --jobs=1 --exclude .git,' + envdir
+
+    if filename is not None:
+        if noglob:
+            templates = [filename]
+        else:
+            templates = [x for x in glob.glob(filename)]
+            if len(templates) == 0:
+                print("File `{0}` not found".format(filename))
+                exit(1)
+
+        command += ' ' + " ".join(templates)
+
+    print("Running command: '" + command + "'")
+    ctx.run(command)

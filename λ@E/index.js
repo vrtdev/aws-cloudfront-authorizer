@@ -9,8 +9,10 @@
  */
 
 "use strict";
+
 const JWT = require('jsonwebtoken');
 const AWS = require('aws-sdk');
+
 
 // TODO: these should not be hard coded
 const verify_access_url = 'https://authorizer.sandbox.a51.be/verify_access';
@@ -89,14 +91,17 @@ function normalize_cookies(headers) {
     return cookies;
 }
 
-function get_host(request) {
-    return request.headers.host[0].value;  // Host:-header is required, should always be present
+function render_cookie_header_value(cookies) {
+    let cookies_array = [];
+    for(let key in cookies) {
+        if (cookies.hasOwnProperty(key)) {
+            cookies_array.push(`${encode_utf8(key)}=${encode_utf8(cookies[key])}`)
+        }
+    }
+    return cookies_array.join('; ');
 }
 
-function has_valid_cookie(request, cb) {
-    const request_headers = request.headers;
-    const cookies = normalize_cookies(request_headers);
-
+function has_valid_cookie(cookies, hostname, cb) {
     if(!(cookie_name in cookies)) {
         // Cookie not present. Redirect to authz
         cb(null, false);
@@ -131,7 +136,6 @@ function has_valid_cookie(request, cb) {
                 return;
             }
 
-            let hostname = get_host(request);
             if(token['domains'].indexOf(hostname) === -1) {
                 console.log(`Hostname '${hostname}' not in allowed list`);
                 // Token is invalid for this domain. Assume bad intend and return 400 (instead of redirect to authz)
@@ -147,8 +151,11 @@ function has_valid_cookie(request, cb) {
 
 exports.handler = (event, context, callback) => {
     const request = event.Records[0].cf.request;
+    const request_headers = request.headers;
+    const hostname = request_headers.host[0].value;  // Host:-header is required, should always be present;
+    const cookies = normalize_cookies(request_headers);
 
-    has_valid_cookie(request, function(err, cookie_is_valid, status='500') {
+    has_valid_cookie(cookies, hostname, function(err, cookie_is_valid, status='500') {
         if( err !== null ) {
             callback(null, {
                 status: status,
@@ -159,12 +166,14 @@ exports.handler = (event, context, callback) => {
             });
 
         } else if(cookie_is_valid) {
-            // Pass on request to origin
+            // Pass on request to origin, but strip cookie
+            delete cookies[cookie_name];
+            request.headers['cookie'] = [{'key': 'Cookie', 'value': render_cookie_header_value(cookies)}];
             callback(null, request);
 
         } else {
             // Not authorized, redirect
-            let return_url = `https://${get_host(request)}${request.uri}`;
+            let return_url = `https://${hostname}${request.uri}`;
             if(request.querystring !== '') {
                 return_url += '?' + request.querystring;
             }
