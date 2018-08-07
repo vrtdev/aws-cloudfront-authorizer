@@ -8,9 +8,8 @@ from central_helpers.custom_resources.certificatemanager import DnsValidatedCert
 from central_helpers.vrt import add_tags, StackLinker
 from custom_resources.CognitoUserPoolClient import CognitoUserPoolClient
 from custom_resources.CognitoUserPoolDomain import CognitoUserPoolDomain
-from troposphere import Template, Parameter, Ref, Sub, Tags, GetAtt, ssm, cloudfront, Output, Export, Join, \
-    AWS_STACK_NAME, apigateway, Equals, route53, FindInMap, AWS_REGION
-from troposphere import serverless, constants, awslambda, cognito, kms, iam
+from troposphere import Template, Parameter, Ref, Sub, Tags, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
+    Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam
 
 template = Template()
 
@@ -54,7 +53,6 @@ param_use_cert = template.add_parameter(Parameter(
     Description="Use TLS certificate"
 ))
 template_helper.add_parameter_label(param_use_cert, "Use TLS certificate")
-
 
 magic_path = '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220'
 
@@ -361,7 +359,7 @@ template.add_resource(serverless.Function(
             Method='GET',
         ),
     },
-    Timeout=2*5,  # Took 5 seconds (cold) on testing
+    Timeout=2 * 5,  # Took 5 seconds (cold) on testing
 ))
 
 template.add_output(Output(
