@@ -56,7 +56,7 @@ validator_version = template.add_resource(awslambda.Version(
 ))
 
 template.add_output(Output(
-    "BasicAuthViewerRequestLambdaFunctionARN",
+    "ValidatorLambdaFunctionARN",
     Value=Ref(validator_version),
 ))
 
