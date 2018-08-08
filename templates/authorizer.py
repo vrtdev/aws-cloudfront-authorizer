@@ -199,21 +199,6 @@ jwt_secret_parameter = template.add_resource(custom_ssm_ps.ParameterStoreParamet
     Tags=Tags(**vrt_tags),
 ))
 
-lae_arn = template.add_resource(custom_ssm_ps.ParameterStoreParameter(
-    "LaeArn",
-    split_stacks=True, ServiceToken=stack_linker.CRST_ParameterStoreParameter,
-    Name=Sub('/${AWS::StackName}/lae-arn'),
-    Type="String",
-    Value="TO BE FILLED IN BY JENKINS",
-    Tags=Tags(**vrt_tags),
-))
-template.add_output(Output(
-    "LaeArnParameter",
-    Description='SSM Parameter containing the Lambda@Edge ARN',
-    Value=Ref(lae_arn),
-    Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'lae-arn'])),
-))
-
 template.add_resource(iam.PolicyType(
     "LambdaSharedSecretParamPermission",
     Roles=[Ref(lambda_role)],
