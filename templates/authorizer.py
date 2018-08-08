@@ -359,7 +359,6 @@ template.add_resource(serverless.Function(
             Method='GET',
         ),
     },
-    Timeout=2 * 5,  # Took 5 seconds (cold) on testing
 ))
 
 template.add_output(Output(
