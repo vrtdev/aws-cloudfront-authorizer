@@ -43,7 +43,6 @@ param_use_cert = template.add_parameter(Parameter(
 ))
 template_helper.add_parameter_label(param_use_cert, "Use TLS certificate")
 
-
 acm_cert = template.add_resource(DnsValidatedCertificate(
     "AcmCert",
     split_stacks=True, ServiceToken=stack_linker.CRST_DnsValidatedCertificate,
@@ -58,7 +57,6 @@ template.add_output(Output(
 
 use_cert_cond = 'UseCert'
 template.add_condition(use_cert_cond, Equals(Ref(param_use_cert), 'yes'))
-
 
 example_distribution = template.add_resource(cloudfront.Distribution(
     "ExampleDistribution",

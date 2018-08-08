@@ -36,7 +36,6 @@ param_s3_key = template.add_parameter(Parameter(
 ))
 template_helper.add_parameter_label(param_s3_key, "Lambda S3 key")
 
-
 validator_lambda = template.add_resource(awslambda.Function(
     "ValidatorLambda",
     Code=awslambda.Code(
