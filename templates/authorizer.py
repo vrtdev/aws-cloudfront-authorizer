@@ -193,6 +193,7 @@ jwt_secret_parameter = template.add_resource(custom_ssm_ps.ParameterStoreParamet
     "JwtSecretParameter",
     split_stacks=True, ServiceToken=stack_linker.CRST_ParameterStoreParameter,
     Name=Sub('/${AWS::StackName}/jwt-secret'),
+    # WARNING: this name is hard-coded in index.js!!!
     Type="SecureString",
     KeyId=Ref(vrt_auth_key),
     RandomValue={"Serial": '1'},  # Change this to force a new random value
@@ -318,6 +319,7 @@ template.add_resource(serverless.Function(
         'VerifyAccess': serverless.ApiEvent(
             'unused',
             Path='/verify_access',
+            # WARNING: this name is hard-coded in index.js
             Method='GET',
         ),
         'VerifyAccessUuid': serverless.ApiEvent(
@@ -402,6 +404,7 @@ domain = template.add_resource(route53.RecordSetType(
     Comment=Sub('Default DNS for ${AWS::StackName} api'),
     HostedZoneId=stack_linker.hosted_zone_id,
     Name=Ref(param_domain_name),
+    # WARNING: this name is hard-coded in index.js
     Type='A',
     Condition=use_cert_cond,
 ))

@@ -11,6 +11,7 @@ import structlog
 
 VRT_AUTH_LOGIN_COOKIE_NAME = 'VRT_authorizer_login'
 VRT_AUTH_ACCESS_COOKIE_NAME = 'VRT_authorizer_access'
+# WARNING: ^^^^^ also hard-coded in index.js!!!
 
 
 @functools.lru_cache(maxsize=1)
