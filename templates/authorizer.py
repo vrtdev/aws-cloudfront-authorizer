@@ -82,7 +82,7 @@ cognito_user_pool_client = template.add_resource(CognitoUserPoolClient(
         ]),
     ],
     AllowedOAuthFlows=["code"],
-    AllowedOAuthScopes=["openid"],
+    AllowedOAuthScopes=["openid", "aws.cognito.signin.user.admin"],
     SupportedIdentityProviders=["COGNITO"],
     GenerateSecret=True,
 ))
