@@ -15,10 +15,10 @@ const AWS = require('aws-sdk');
 
 
 // TODO: these should not be hard coded
-const verify_access_url = 'https://authorizer.sandbox.a51.be/verify_access';
+const verify_access_url = 'https://authorizer.stag.a51.be/verify_access';
 const cookie_name = 'VRT_authorizer_access';
 const parameter_store_region = 'eu-west-1';
-const parameter_store_parameter_name = '/laukenn-authz/jwt-secret';
+const parameter_store_parameter_name = '/vrt-authorizer-authorizer/jwt-secret';
 
 
 let jwt_secret_callbacks = [];
