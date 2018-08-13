@@ -69,6 +69,19 @@ cognito_user_pool_domain = template.add_resource(CognitoUserPoolDomain(
     # Domain=auto-generated
 ))
 
+# Output for ADFS configuration:
+template.add_output(Output(
+    'SamlUrl',
+    Value=Join('', [
+        "https://", GetAtt(cognito_user_pool_domain, 'Domain'), ".auth.", Ref(AWS_REGION), ".amazoncognito.com/saml2/idpresponse"
+    ]),
+    Description='redirect or sign-in URL',
+))
+template.add_output(Output(
+    "Urn",
+    Value=Sub("urn:amazon:cognito:sp:{id}".format(id=resource2var(cognito_user_pool))),
+))
+
 cognito_user_pool_client = template.add_resource(CognitoUserPoolClient(
     "CognitoUserPoolClient",
     ServiceToken=stack_linker.CRST_CognitoUserPoolClient2,
