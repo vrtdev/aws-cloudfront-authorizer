@@ -71,7 +71,7 @@ example_distribution = template.add_resource(cloudfront.Distribution(
             cloudfront.Origin(
                 # Your usual config goes here
                 Id="RealOrigin",
-                DomainName="www.whatismyip.com",
+                DomainName="ifconfig.io",
                 CustomOriginConfig=cloudfront.CustomOrigin(
                     HTTPPort=80,
                     HTTPSPort=443,
