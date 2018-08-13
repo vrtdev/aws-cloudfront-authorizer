@@ -408,8 +408,8 @@ api_domain_mapping = template.add_resource(apigateway.BasePathMapping(
 hosted_zone_map = "HostedZoneMap"
 template.add_mapping(hosted_zone_map, mappings.hosted_zone_map())
 
-domain = template.add_resource(route53.RecordSetType(
-    "Domain",
+template.add_resource(route53.RecordSetType(
+    "DomainA",
     AliasTarget=route53.AliasTarget(
         DNSName=GetAtt(api_domain, 'DistributionDomainName'),
         HostedZoneId=FindInMap(hosted_zone_map, Ref(AWS_REGION), 'CloudFront'),
@@ -419,6 +419,20 @@ domain = template.add_resource(route53.RecordSetType(
     Name=Ref(param_domain_name),
     # WARNING: this name is hard-coded in index.js
     Type='A',
+    Condition=use_cert_cond,
+))
+
+template.add_resource(route53.RecordSetType(
+    "DomainAAAA",
+    AliasTarget=route53.AliasTarget(
+        DNSName=GetAtt(api_domain, 'DistributionDomainName'),
+        HostedZoneId=FindInMap(hosted_zone_map, Ref(AWS_REGION), 'CloudFront'),
+    ),
+    Comment=Sub('Default DNS for ${AWS::StackName} api'),
+    HostedZoneId=stack_linker.hosted_zone_id,
+    Name=Ref(param_domain_name),
+    # WARNING: this name is hard-coded in index.js
+    Type='AAAA',
     Condition=use_cert_cond,
 ))
 
