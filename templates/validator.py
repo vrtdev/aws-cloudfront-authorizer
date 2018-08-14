@@ -1,11 +1,11 @@
 """
 VRT validator stack
 """
-import time
-
 from central_helpers import MetadataHelper, write_template_to_file
 from central_helpers.vrt import add_tags, StackLinker
 from troposphere import Template, constants, Parameter, awslambda, Ref, Tags, Output
+
+from custom_resources.LambdaVersion import LambdaVersion
 
 template = Template()
 
@@ -50,10 +50,11 @@ validator_lambda = template.add_resource(awslambda.Function(
     Tags=Tags(**vrt_tags),
 ))
 
-validator_version = template.add_resource(awslambda.Version(
-    # TODO: Force a new resource name only when the code changes
-    "ValidatorVersion{}".format(time.strftime("%Y%m%d%H%M%S")),
+validator_version = template.add_resource(LambdaVersion(
+    "ValidatorVersion",
+    ServiceToken=stack_linker.CRST_LambdaVersion,
     FunctionName=Ref(validator_lambda),
+    Dummy=Ref(param_s3_key),  # Trigger update on function update
 ))
 
 template.add_output(Output(
