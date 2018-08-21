@@ -1,5 +1,5 @@
 from central_helpers import MetadataHelper, write_template_to_file, mappings
-from central_helpers.custom_resources.certificatemanager import DnsValidatedCertificate
+from custom_resources.AcmDnsValidatedCertificate import AcmDnsValidatedCertificate
 from central_helpers.vrt import add_tags, StackLinker
 from troposphere import Template, Tags, cloudfront, constants, ImportValue, Sub, Join, Parameter, Ref, Output, GetAtt, \
     Equals, AWS_NO_VALUE, If, route53, FindInMap, AWS_REGION
@@ -43,9 +43,9 @@ param_use_cert = template.add_parameter(Parameter(
 ))
 template_helper.add_parameter_label(param_use_cert, "Use TLS certificate")
 
-acm_cert = template.add_resource(DnsValidatedCertificate(
+acm_cert = template.add_resource(AcmDnsValidatedCertificate(
     "AcmCert",
-    split_stacks=True, ServiceToken=stack_linker.CRST_DnsValidatedCertificate,
+    ServiceToken=stack_linker.CRST_AcmDnsValidatedCertificate,
     Region='us-east-1',  # Api gateway is in us-east-1
     DomainName=Ref(param_domain_name),
     Tags=Tags(**vrt_tags),

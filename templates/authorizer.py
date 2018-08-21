@@ -3,9 +3,9 @@ VRT authorizer stack
 """
 from central_helpers import MetadataHelper, write_template_to_file, \
     kms as kms_helpers, resource2var, mappings
-from central_helpers.custom_resources import parameter_store as custom_ssm_ps
-from central_helpers.custom_resources.certificatemanager import DnsValidatedCertificate
 from central_helpers.vrt import add_tags, StackLinker
+from custom_resources.SsmParameter import SsmParameter
+from custom_resources.AcmDnsValidatedCertificate import AcmDnsValidatedCertificate
 from custom_resources.CognitoUserPoolClient import CognitoUserPoolClient
 from custom_resources.CognitoUserPoolDomain import CognitoUserPoolDomain
 from troposphere import Template, Parameter, Ref, Sub, Tags, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
@@ -180,7 +180,7 @@ vrt_auth_key = template.add_resource(kms.Key(
             {
                 "Sid": "Allow encrypting things",
                 "Effect": "Allow",
-                "Principal": {"AWS": stack_linker.CRR_ParameterStoreParameter},
+                "Principal": {"AWS": stack_linker.CRR_SsmParameter},
                 "Action": "kms:Encrypt",
                 "Resource": "*",
             },
@@ -202,9 +202,9 @@ vrt_auth_key_alias = template.add_resource(kms.Alias(
     TargetKeyId=Ref(vrt_auth_key),
 ))
 
-jwt_secret_parameter = template.add_resource(custom_ssm_ps.ParameterStoreParameter(
+jwt_secret_parameter = template.add_resource(SsmParameter(
     "JwtSecretParameter",
-    split_stacks=True, ServiceToken=stack_linker.CRST_ParameterStoreParameter,
+    ServiceToken=stack_linker.CRST_SsmParameter,
     Name=Sub('/${AWS::StackName}/jwt-secret'),
     # WARNING: this name is hard-coded in index.js!!!
     Type="SecureString",
@@ -357,9 +357,9 @@ template.add_output(Output(
     Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'magic-path'])),
 ))
 
-acm_cert = template.add_resource(DnsValidatedCertificate(
+acm_cert = template.add_resource(AcmDnsValidatedCertificate(
     "AcmCert",
-    split_stacks=True, ServiceToken=stack_linker.CRST_DnsValidatedCertificate,
+    ServiceToken=stack_linker.CRST_AcmDnsValidatedCertificate,
     Region='us-east-1',  # Api gateway is in us-east-1
     DomainName=Ref(param_domain_name),
     Tags=Tags(**vrt_tags),
