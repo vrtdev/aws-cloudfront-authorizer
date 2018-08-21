@@ -2,12 +2,12 @@
 
 participant "Possibly different browser" as browser
 participant "Restricted site\nCloudFront" as stagcf
-participant "Restricted site" as stagorigin
 participant "vrt authorizer" as auth
+participant "Restricted site" as stagorigin
 
 group Set cookies
 
-browser -> auth: GET /grant_access?token=JWT(username, domains, exp)
+browser -> auth: GET http://authorizer/grant_access?token=JWT(username, domains, exp)
 note right of auth: grant_access.py\nset cookie on authorizer domain
 browser <- auth: 200 HTML with links per domain\nSet-Cookie: vrt_authorizer_access=JWT(username, domains, exp)
 
@@ -15,25 +15,25 @@ end
 
 group Visit restricted site
 
-alt First visit of domain-name
-browser -> stagcf: GET domain-name/whatever
-note right of stagcf: λ@E: check Cookie:-header
-browser <- stagcf: 302 authorizer/verify_access?return_to=domain-name/whatever
+alt First visit of restricted
+browser -> stagcf: GET https://restricted/whatever
+note right of stagcf: λ@E Viewer Request:\ncheck Cookie:-header\nnot present/expired => redirect to authorizer
+browser <- stagcf: 302 https://authorizer/verify_access?\n    return_to=https%3a%2f%2frestricted%2fwhatever
 
-browser -> auth: GET authorizer/verify_access?return_to=domain-name/whatever\nCookie: vrt_authorizer_access=JWT(username, domains, exp)
-note right of auth: verify_access.py\ncheck cookie set on authorizer domain, convert to query parameter
-browser <- auth: 302 domain-name/auth-UUID/set-cookie?domain=domain-name&token=JWT()&return_to=domain-name/whatever
+browser -> auth: GET https://authorizer/verify_access?\n    return_to=https%3a%2f%2frestricted%2fwhatever\nCookie: vrt_authorizer_access=JWT(username, domains, exp)
+note right of auth: verify_access.py\ncheck cookie set on authorizer domain,\nconvert to query parameter
+browser <- auth: 302 https://restricted/auth-UUID/set-cookie?\n    domain=restricted&\n    token=JWT()&\n    return_to=https%3a%2f%2frestricted%2fwhatever
 
-browser -> stagcf: GET domain-name/auth-UUID/set-cookie?domain=domain-name&token=JWT()&return_to=domain-name/whatever
-stagcf -> auth: GET domain-name/auth-UUID/set-cookie?domain=domain-name&token=JWT()&return_to=domain-name/whatever
-note right of auth: set_cookie.py
-stagcf <- auth: 302 domain-name/whatever\nSet-Cookie: CloudFront-Policy=xxx\nSet-Cookie: CloudFront-Signature=xxx
-browser <- stagcf: 302 domain-name/whatever\nSet-Cookie: CloudFront-Policy=xxx\nSet-Cookie: CloudFront-Signature=xxx
+browser -> stagcf: GET https://restricted/auth-UUID/set-cookie?\n    domain=restricted&\n    token=JWT()&\n    return_to=https%3a%2f%2frestricted%2fwhatever
+stagcf -> auth: GET https://restricted/auth-UUID/set-cookie?\n    domain=restricted&\n    token=JWT()&\n    return_to=https%3a%2f%2frestricted%2fwhatever
+note right of auth: set_cookie.py\nconvert query parameter to Set-Cookie
+stagcf <- auth: 302 https://restricted/whatever\nSet-Cookie: vrt_authorizer_access=JWT(username, domains, exp)
+browser <- stagcf: 302 https://restricted/whatever\nSet-Cookie: vrt_authorizer_access=JWT(username, domains, exp)
 end
 
-browser -> stagcf: GET domain-name/whatever\nCookie: CloudFront-Policy=xxx
-note right of stagcf: λ@E: check Cookie:-header
-stagcf -> stagorigin:  GET domain-name/whatever\nCookie: CloudFront-Policy=xxx
+browser -> stagcf: GET https://restricted/whatever\nCookie: vrt_authorizer_access=JWT(username, domains, exp)
+note right of stagcf: λ@E Viewer Request:\ncheck Cookie:-header\nOK => pass through
+stagcf -> stagorigin:  GET https://restricted/whatever\nCookie: <stripped>
 stagcf <- stagorigin: 200
 browser <- stagcf: 200
 

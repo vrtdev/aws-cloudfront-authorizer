@@ -2,7 +2,7 @@
 
 participant browser
 participant "vrt authorizer" as auth
-participant "Cognito / ADFS" as cognito
+participant "Cognito" as cognito
 
 group Initial request
 
@@ -14,10 +14,11 @@ browser <- auth: 302 cognito
 
 browser --> cognito: authenticate
 ...authentication...
-browser <- cognito: 302 authorizer/?code=12345
+browser <- cognito: 302 https://authorizer/?code=12345
 
 browser -> auth: GET /?code=12345
 note right of auth: index.py
+hnote over auth: verify code and get username
 auth -> cognito: POST /oauth2/cognito_token: code
 auth <- cognito: id_token, access_token, refresh_token
 hnote over auth: verify id_token, convert to JWT
