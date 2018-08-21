@@ -1,7 +1,6 @@
 import os
 import re
 import time
-import urllib.parse
 from unittest import mock
 
 import jwt

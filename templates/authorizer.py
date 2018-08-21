@@ -307,24 +307,6 @@ template.add_resource(serverless.Function(
 ))
 
 template.add_resource(serverless.Function(
-    "Forbidden",
-    **common_lambda_options,
-    Handler='forbidden.handler',
-    Events={
-        'Forbidden': serverless.ApiEvent(
-            'unused',
-            Path='/forbidden',
-            Method='GET',
-        ),
-        'ForbiddenUuid': serverless.ApiEvent(
-            'unused',
-            Path=magic_path + '/forbidden',
-            Method='GET',
-        ),
-    },
-))
-
-template.add_resource(serverless.Function(
     "VerifyAccess",
     **common_lambda_options,
     Handler='verify_access.handler',

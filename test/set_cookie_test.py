@@ -1,40 +1,11 @@
-import json
 import os
 import time
 from unittest import mock
 
 import jwt
 import pytest
-import rsa
 
 from src import set_cookie
-
-test_keypair = {
-    'private': """\
------BEGIN RSA PRIVATE KEY-----
-MIICXAIBAAKBgQDYDRTsbDmjdFKqparYnJeeYuixSSTo1nY55cFDnFmt45FBV0ne
-hIftF6SxxV/Wk/EI5y5HdVzfoQQrK8CmYAPnIpsSmchOPhUcWBU6QwFaYSXLHITD
-sQ5rNiTFqprOGDorzvBnHoS3wYwLtXm7avepebIEKdt88DDTWuxuGJwVVwIDAQAB
-AoGARbGqnz2mNkEu7Zd1jlytWE2FzLLQsj+EcdbYykukbkCruc1DqgFMq8Hlwebu
-rJSau4l/11NXu1gAtUBu6/yrJQt+4YF4m648sQkgtQHQTnp9aickhJHN7NwwEWIo
-XRYOGti729K4AxjfNpTctruoSFt/QHoG4J3qQWD+ZRJijEECQQD40wCFt6CPAtam
-3wKQGDpW9qr8u0KaBBPlpnPJbSnf/n7xKtn/2T13I2RXOUz/lRYpsE8kO9FG5E3k
-1fiRQbrhAkEA3kggBh0vdbGQqYy/glAPyq9UYW9XxQTcE/kAyCCiHqTknm6jERXY
-zdy6EFZzYTaSDkuAL6/Ky+iRlF0H0oHPNwJAKIalRSIdQm2h7FfSIQnxJozSWItf
-U5pqazLrFNl0woi+wCTMkMEfI7Jd+17XzaDIlU2j9jDP6w3wKd83tuDPwQJAGgt7
-bRv4VqMCn0s1mVBGOWqHyY7hSt2B5/kyJUDlng+WFhZClxrnN1/YkVd/13Esde5U
-y8GeUnwiqq6n3vuEywJBAJiYcMP9h8TqQrKNyikcWxgFq95x/uWzP9L+z2AgoY+C
-rlDCBvcLuV9mCftxKzukqvHIYTWpUFCi1VEVVfVWXKE=
------END RSA PRIVATE KEY-----
-""",
-    'public': """\
------BEGIN RSA PUBLIC KEY-----
-MIGJAoGBANgNFOxsOaN0Uqqlqticl55i6LFJJOjWdjnlwUOcWa3jkUFXSd6Eh+0X
-pLHFX9aT8QjnLkd1XN+hBCsrwKZgA+cimxKZyE4+FRxYFTpDAVphJcschMOxDms2
-JMWqms4YOivO8GcehLfBjAu1ebtq96l5sgQp23zwMNNa7G4YnBVXAgMBAAE=
------END RSA PUBLIC KEY-----
-""",
-}
 
 
 def test_validate():

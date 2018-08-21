@@ -37,7 +37,7 @@ param_use_cert = template.add_parameter(Parameter(
     "UseCert",
     Type=constants.STRING,
     AllowedValues=['yes', 'no'],
-    Default='no',  # Default to no, so new stacks requets, but don't use certs
+    Default='no',  # Default to no, so new stacks request, but don't use certs
     # This avoids stacks failing since the cert is not approved yet
     Description="Use TLS certificate"
 ))

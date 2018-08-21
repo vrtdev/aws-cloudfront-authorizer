@@ -23,12 +23,6 @@ def test_case_variants_long():
     assert it.__next__() == 68 * 'a' + 'AA'
 
 
-def test_base64():
-    assert utils.aws_web_safe_base64_encode(b'tes') == 'dGVz'
-    assert utils.aws_web_safe_base64_encode(b'test') == 'dGVzdA__'
-    assert utils.aws_web_safe_base64_encode(b'\xff\xe0') == '~-A_'
-
-
 def test_canon_header():
     assert utils.canonicalize_headers({
             'Cookie': 'foo',

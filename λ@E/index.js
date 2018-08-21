@@ -14,7 +14,8 @@ const JWT = require('jsonwebtoken');
 const AWS = require('aws-sdk');
 
 
-// TODO: these should not be hard coded
+// TODO: these should not be hard coded,
+// but Lambda@Edge does not support Environment Parameters
 const verify_access_url = 'https://authorizer.stag.a51.be/verify_access';
 const cookie_name = 'VRT_authorizer_access';
 const parameter_store_region = 'eu-west-1';

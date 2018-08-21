@@ -98,18 +98,6 @@ def validate_login_cookie(event: dict) -> dict:
         raise NotLoggedInError("Invalid login cookie") from e
 
 
-def aws_web_safe_base64_encode(plain: typing.Union[bytes, str]) -> str:
-    if isinstance(plain, str):
-        plain = plain.encode('utf-8')
-
-    normal_b64 = base64.b64encode(plain).decode('ascii')
-    # The `altchars` parameter of b64encode() is useless, since we need to convert the `=` as well
-    websafe_b64 = normal_b64.translate(
-        {ord('+'): '-', ord('='): '_', ord('/'): '~'}
-    )
-    return websafe_b64
-
-
 def generate_cookie(key: str, value: str, max_age: int = None, path: str = None) -> str:
     cookie = cookies.Morsel()
     cookie.set(

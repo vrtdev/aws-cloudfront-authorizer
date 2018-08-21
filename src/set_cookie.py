@@ -115,7 +115,7 @@ def handler(event, context) -> dict:
             'Content-Type': 'text/plain',
             **set_cookies_headers,
         },
-        'body': f"Toegang verleend tot: {request.domain}\n"
-                f"Geldig tot {time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime(request.expire))} "
+        'body': f"Access granted to: {request.domain}\n"
+                f"Valid until {time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime(request.expire))} "
                 f"({request.expire})\n",
     }
