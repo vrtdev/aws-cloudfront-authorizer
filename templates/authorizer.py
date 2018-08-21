@@ -9,7 +9,7 @@ from custom_resources.AcmDnsValidatedCertificate import AcmDnsValidatedCertifica
 from custom_resources.CognitoUserPoolClient import CognitoUserPoolClient
 from custom_resources.CognitoUserPoolDomain import CognitoUserPoolDomain
 from troposphere import Template, Parameter, Ref, Sub, Tags, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
-    Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam
+    Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3
 
 template = Template()
 
@@ -100,6 +100,15 @@ cognito_user_pool_client = template.add_resource(CognitoUserPoolClient(
     GenerateSecret=True,
 ))
 
+config_bucket = template.add_resource(s3.Bucket(
+    "ConfigBucket",
+))
+template.add_output(Output(
+    "ConfigBucketName",
+    Description='Config bucket name',
+    Value=Ref(config_bucket),
+))
+
 lambda_role = template.add_resource(iam.Role(
     "LambdaRole",
     Path="/",
@@ -134,6 +143,23 @@ lambda_role = template.add_resource(iam.Role(
                         ],
                         "Resource": "*"
                     },
+                    {
+                        # Allow lambda to read its own configuration
+                        # Needed for Lambda@Edge to pass parameters
+                        "Effect": "Allow",
+                        "Action": [
+                            "lambda:GetFunction"
+                        ],
+                        "Resource": "*"
+                    },
+                    {
+                        # Read configuration
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:GetObject",
+                        ],
+                        "Resource": Join('', ["arn:aws:s3:::", Ref(config_bucket), "/*"]),
+                    }
 
                     # KMS permissions are defined on the key
                     # Parameter store permissions are added below to prevent dependency cirlce
@@ -248,6 +274,7 @@ common_lambda_options = {
             "JWT_SECRET_PARAMETER_NAME": Ref(jwt_secret_parameter),
             "DOMAIN_NAME": Ref(param_domain_name),
             "MAGIC_PATH": magic_path,
+            "CONFIG_BUCKET": Ref(config_bucket),
         }
     ),
     'Role': GetAtt(lambda_role, 'Arn'),

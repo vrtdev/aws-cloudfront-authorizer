@@ -14,47 +14,88 @@ const JWT = require('jsonwebtoken');
 const AWS = require('aws-sdk');
 
 
-// TODO: these should not be hard coded,
-// but Lambda@Edge does not support Environment Parameters
-const verify_access_url = 'https://authorizer.stag.a51.be/verify_access';
-const cookie_name = 'VRT_authorizer_access';
-const parameter_store_region = 'eu-west-1';
-const parameter_store_parameter_name = '/vrt-authorizer-authorizer/jwt-secret';
-
-
-let jwt_secret_callbacks = [];
-let jwt_secret = null;
-function get_jwt_secret_nocache(cb) {
-    let ssm = new AWS.SSM({'region': parameter_store_region});
-    const params = {
-        Name: parameter_store_parameter_name,
-        WithDecryption: true,
-    };
-    ssm.getParameter(params, function(err, data) {
-        if( err !== null ) {
-            cb(err, data);
-        } else {
-            cb(null, data['Parameter']['Value']);
-        }
+function asyncLambdaGetFunction(param, service_param = {}) {
+    return new Promise(function(resolve, reject) {
+        const lambda = new AWS.Lambda(service_param);
+        lambda.getFunction(param, function(err, data) {
+            if(err !== null) { reject(err); }
+            else { resolve(data); }
+        });
     });
 }
-function get_jwt_secret(header, cb) {
-    if( jwt_secret !== null ) {
-        cb(null, jwt_secret);
-    } else {
-        jwt_secret_callbacks.push(cb);
-        get_jwt_secret_nocache(function(err, data) {
-            if( err === null ) {
-                jwt_secret = data;
-            }
-            for( const cb of jwt_secret_callbacks ) {
-                cb(err, data);
-            }
-            jwt_secret_callbacks = [];
+
+async function get_config_bucket(context) {
+    const dot_location = context.functionName.indexOf('.');
+    const functionName_without_region = context.functionName.substring(dot_location + 1);
+    const lambda_description = await asyncLambdaGetFunction({
+            'FunctionName': functionName_without_region,
+        }, {
+            region: 'us-east-1',  // Lambda@Edge is always us-east-1
+        }
+    );
+    return lambda_description.Tags['ConfigBucket'];
+}
+
+function asyncS3GetObject(param) {
+    return new Promise(function(resolve, reject) {
+        const s3 = new AWS.S3();
+        s3.getObject(param, function(err, data) {
+            if(err !== null) { reject(err); }
+            else { resolve(data); }
         });
+    });
+}
+
+async function get_config_(context) {
+    const config_bucket = await get_config_bucket(context);
+    try {
+        const config_response = await asyncS3GetObject({
+            'Bucket': config_bucket,
+            'Key': 'config.json',
+        });
+        const body = config_response.Body.toString('utf-8');
+        console.log("Retrieved config from S3:");
+        console.log(body);
+        return JSON.parse(body);
+    } catch(e) {
+        console.log("Could not retrieve config from S3. Using defaults.");
+        console.log(e);
+        return {  // Default settings
+            'verify_access_url': 'https://authorizer.example.org/verify_access',
+            'cookie_name': 'authorizer_access',
+            'parameter_store_region': 'eu-west-1',
+            'parameter_store_parameter_name': '/authorizer/jwt-secret',
+        }
     }
 }
 
+function get_config_promise(context) {
+    if(typeof get_config_promise.cache === 'undefined') {
+        get_config_promise.cache = get_config_(context);
+    }
+    return get_config_promise.cache
+}
+
+
+function get_jwt_secret_promise(region, param_name) {
+    if(typeof get_jwt_secret_promise.promise === 'undefined') {
+        get_jwt_secret_promise.promise = new Promise(function(resolve, reject) {
+            const ssm = new AWS.SSM({
+                'region': region,
+            });
+            ssm.getParameter({
+                    'Name': param_name,
+                    'WithDecryption': true,
+                },
+                function(err, data) {
+                    if(err !== null) { reject(err); }
+                    else { resolve(data['Parameter']['Value']); }
+                }
+            );
+        });
+    }
+    return get_jwt_secret_promise.promise;
+}
 
 function encode_utf8(s) {
     return unescape(encodeURIComponent(s));
@@ -102,95 +143,105 @@ function render_cookie_header_value(cookies) {
     return cookies_array.join('; ');
 }
 
-function has_valid_cookie(cookies, hostname, cb) {
-    if(!(cookie_name in cookies)) {
+class NotAuthorized extends Error {}
+class BadToken extends Error {}
+
+async function validate_cookie(cookies, hostname, config) {
+    if(!(config.cookie_name in cookies)) {
         // Cookie not present. Redirect to authz
-        cb(null, false);
-        return;
+        throw new NotAuthorized();
     }
 
-    const cookie_value = cookies[cookie_name];
+    const cookie_value = cookies[config.cookie_name];
 
-    JWT.verify(
-        cookie_value,
-        get_jwt_secret,
-        {
-            "algorithms": ["HS256"],
-        },
-        function(err, token) {
-            if( err !== null ) {
-                console.log("JWT validation failed: " + err);
-                // Hide validation error for security reasons
-                // Assume expired cookie, redirect to authz
-                cb(null, false);
-                return;
+    let token;
+    try {
+        const get_jwt_secret = await get_jwt_secret_promise(
+            config.parameter_store_region,
+            config.parameter_store_parameter_name
+        );
+        token = JWT.verify(
+            cookie_value,
+            get_jwt_secret,
+            {
+                "algorithms": ["HS256"],
             }
-            console.log("JWT validated: " + JSON.stringify(token));
+        );
+        console.log("JWT validated: " + JSON.stringify(token));
+    } catch(e) {
+        console.log("JWT validation failed: " + e);
+        // Hide validation error for security reasons
+        // Assume expired cookie, redirect to authz
+        throw new NotAuthorized();
+    }
 
-            if( !('iat' in token) ||
-                !('exp' in token) ||  // exp is checked by JWT.verify(), but not required to be present
-                !('domains' in token)
-            ) {
-                console.log("JWT is malformed");
-                // Token is invalid. Assume bad intend and return 400 (instead of redirect to authz)
-                cb('Bad token', false, 400);
-                return;
-            }
+    if( !('iat' in token) ||
+        !('exp' in token) ||  // exp is checked by JWT.verify(), but not required to be present
+        !('domains' in token)
+    ) {
+        console.log("JWT is malformed");
+        // Token is invalid. Assume bad intend and return 400 (instead of redirect to authz)
+        throw new BadToken();
+    }
 
-            if(token['domains'].indexOf(hostname) === -1) {
-                console.log(`Hostname '${hostname}' not in allowed list`);
-                // Token is invalid for this domain. Assume bad intend and return 400 (instead of redirect to authz)
-                cb('Bad token', false, 400);
-                return;
-            }
+    if(token['domains'].indexOf(hostname) === -1) {
+        console.log(`Hostname '${hostname}' not in allowed list`);
+        // Token is invalid for this domain. Assume bad intend and return 400 (instead of redirect to authz)
+        throw new BadToken();
+    }
 
-            console.log("Allowing access");
-            cb(err, true);
-        },
-    );
+    console.log("Allowing access");
 }
 
-exports.handler = (event, context, callback) => {
+exports.handler = async (event, context) => {
+    const config = await get_config_promise(context);
+
     const request = event.Records[0].cf.request;
     const request_headers = request.headers;
     const hostname = request_headers.host[0].value;  // Host:-header is required, should always be present;
     const cookies = normalize_cookies(request_headers);
 
-    has_valid_cookie(cookies, hostname, function(err, cookie_is_valid, status='500') {
-        if( err !== null ) {
-            callback(null, {
-                status: status,
-                statusDescription: 'Internal Server Error',
+    try {
+        await validate_cookie(cookies, hostname, config);
+
+        delete cookies[config.cookie_name];
+        request.headers['cookie'] = [{'key': 'Cookie', 'value': render_cookie_header_value(cookies)}];
+        return request;
+    } catch(e) {
+        if(e instanceof BadToken) {
+            return {
+                status: 400,
+                statusDescription: 'Bad Request',
                 headers: {},
                 bodyEncoding: 'text',
-                body: err.toString(),
-            });
-
-        } else if(cookie_is_valid) {
-            // Pass on request to origin, but strip cookie
-            delete cookies[cookie_name];
-            request.headers['cookie'] = [{'key': 'Cookie', 'value': render_cookie_header_value(cookies)}];
-            callback(null, request);
-
-        } else {
-            // Not authorized, redirect
+                body: 'Bad request',
+            };
+        } else if(e instanceof NotAuthorized) {
             let return_url = `https://${hostname}${request.uri}`;
             if(request.querystring !== '') {
                 return_url += '?' + request.querystring;
             }
 
-            callback(null, {
+            return {
                 status: '302',
                 statusDescription: 'Found',
                 headers: {
                     'location': [{
                         key: 'Location',
-                        value: `${verify_access_url}?return_to=${encodeURIComponent(return_url)}`,
+                        value: `${config.verify_access_url}?return_to=${encodeURIComponent(return_url)}`,
                     }],
                 },
                 bodyEncoding: 'text',
                 body: 'Not authorized, redirecting to authorization server',
-            });
+            };
+        } else {
+            return {
+                status: 500,
+                statusDescription: 'Internal Server Error',
+                headers: {},
+                bodyEncoding: 'text',
+                body: e.toString(),
+            }
         }
-    });
+    }
 };

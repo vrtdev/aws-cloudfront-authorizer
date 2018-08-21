@@ -38,6 +38,14 @@ param_s3_key = template.add_parameter(Parameter(
 ))
 template_helper.add_parameter_label(param_s3_key, "Lambda S3 key")
 
+param_config_bucket = template.add_parameter(Parameter(
+    "ConfigBucket",
+    Default="",
+    Type=constants.STRING,
+    Description="Name of the configuration bucket",
+))
+template_helper.add_parameter_label(param_config_bucket, "Lambda Config S3 bucket")
+
 validator_lambda = template.add_resource(awslambda.Function(
     "ValidatorLambda",
     Code=awslambda.Code(
@@ -47,7 +55,7 @@ validator_lambda = template.add_resource(awslambda.Function(
     Runtime='nodejs8.10',
     Handler='index.handler',
     Role=Ref(param_role),
-    Tags=Tags(**vrt_tags),
+    Tags=Tags(ConfigBucket=Ref(param_config_bucket), **vrt_tags),
 ))
 
 validator_version = template.add_resource(LambdaVersion(
