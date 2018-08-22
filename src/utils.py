@@ -1,5 +1,6 @@
 import base64
 import functools
+import json
 import os
 import typing
 from http import cookies
@@ -8,10 +9,9 @@ import boto3
 import jwt
 import structlog
 
-
-VRT_AUTH_LOGIN_COOKIE_NAME = 'VRT_authorizer_login'
-VRT_AUTH_ACCESS_COOKIE_NAME = 'VRT_authorizer_access'
-# WARNING: ^^^^^ also hard-coded in index.js!!!
+AUTH_LOGIN_COOKIE_NAME = 'VRT_authorizer_login'
+AUTH_ACCESS_COOKIE_NAME = 'VRT_authorizer_access'
+DOMAIN_KEY = 'domains.json'
 
 
 @functools.lru_cache(maxsize=1)
@@ -82,7 +82,7 @@ def validate_login_cookie(event: dict) -> dict:
 
     try:
         request_cookies = cookies.BaseCookie(headers['cookie'][0])
-        login_token = request_cookies[VRT_AUTH_LOGIN_COOKIE_NAME].value
+        login_token = request_cookies[AUTH_LOGIN_COOKIE_NAME].value
 
         token = jwt.decode(  # may raise
             login_token,
@@ -125,3 +125,14 @@ def main_url(event):
 def url_origin(url: str) -> str:
     parts = url.split('/')
     return '/'.join(parts[0:3])
+
+
+def get_domains():
+    s3_client = boto3.client('s3')
+    response = s3_client.get_object(
+        Bucket=os.environ['CONFIG_BUCKET'],
+        Key=DOMAIN_KEY,
+    )
+    body = response['Body'].read()
+    domains = json.loads(body)
+    return domains

@@ -17,7 +17,7 @@ import attr
 import jwt
 import structlog
 
-from utils import get_jwt_secret, generate_case_variants, generate_cookie, VRT_AUTH_ACCESS_COOKIE_NAME
+from utils import get_jwt_secret, generate_case_variants, generate_cookie, AUTH_ACCESS_COOKIE_NAME
 
 
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
@@ -60,7 +60,7 @@ def generate_cookie_headers(request: SetCookieRequest) -> typing.List[str]:
     expire_in = int(request.expire - time.time())
 
     return [
-        generate_cookie(VRT_AUTH_ACCESS_COOKIE_NAME, request.raw_token,
+        generate_cookie(AUTH_ACCESS_COOKIE_NAME, request.raw_token,
                         max_age=expire_in, path='/'),
     ]
 

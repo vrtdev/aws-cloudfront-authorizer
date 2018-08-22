@@ -6,7 +6,7 @@ import jwt
 import structlog
 import attr
 
-from utils import canonicalize_headers, VRT_AUTH_ACCESS_COOKIE_NAME, get_jwt_secret
+from utils import canonicalize_headers, AUTH_ACCESS_COOKIE_NAME, get_jwt_secret
 
 
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
@@ -22,7 +22,7 @@ class VerifyAccessRequest:
 def validate_request(event: dict) -> VerifyAccessRequest:
     headers = canonicalize_headers(event['headers'])
     request_cookies = cookies.BaseCookie(headers['cookie'][0])
-    access_token = request_cookies[VRT_AUTH_ACCESS_COOKIE_NAME].value
+    access_token = request_cookies[AUTH_ACCESS_COOKIE_NAME].value
 
     token = jwt.decode(  # may raise
         access_token,

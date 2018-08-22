@@ -13,13 +13,14 @@ def test_validate():
     with pytest.raises(KeyError):
         request_access.validate_request({})
 
-    req = request_access.validate_request({
-        'body': 'exp=42'
-    })
-    assert req.expire == 42
-    assert req.domains == set()
+    with mock.patch('src.request_access.get_domains', return_value=set()):
+        req = request_access.validate_request({
+            'body': 'exp=42'
+        })
+        assert req.expire == 42
+        assert req.domains == set()
 
-    with mock.patch('src.request_access.known_domains', return_value=['example.org', 'example.com']):
+    with mock.patch('src.request_access.get_domains', return_value={'example.org', 'example.com'}):
         req = request_access.validate_request({
             'body': 'exp=42&example.org=on&example.com=checked'
         })

@@ -1,27 +1,13 @@
 import json
 import os
 
-import boto3
 import botocore.exceptions
 import botocore
 import structlog
 
-from utils import validate_login_cookie, NotLoggedInError
-
-DOMAIN_KEY = 'domains.json'
+from utils import validate_login_cookie, NotLoggedInError, get_domains
 
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
-
-
-def get_domains():
-    s3_client = boto3.client('s3')
-    response = s3_client.get_object(
-        Bucket=os.environ['CONFIG_BUCKET'],
-        Key=DOMAIN_KEY,
-    )
-    body = response['Body'].read()
-    domains = json.loads(body)
-    return domains
 
 
 def handler(event, context):

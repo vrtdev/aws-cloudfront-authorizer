@@ -1,5 +1,5 @@
 """
-VRT authorizer stack
+Authorizer stack.
 """
 from central_helpers import MetadataHelper, write_template_to_file, \
     kms as kms_helpers, resource2var, mappings
@@ -38,7 +38,7 @@ template_helper.add_parameter_label(param_s3_key, "Lambda S3 key")
 
 param_domain_name = template.add_parameter(Parameter(
     "DomainName",
-    Default="authorizer.a51.be",
+    Default="authorizer.example.org",
     Type=constants.STRING,
     Description="Domain name to use",
 ))
@@ -176,9 +176,9 @@ template.add_output(Output(
     Value=GetAtt(lambda_role, 'Arn'),
 ))
 
-vrt_auth_key = template.add_resource(kms.Key(
-    "VrtAuthKey",
-    Description=Sub("Key for VRT-authorizer in ${AWS::StackName}"),
+auth_key = template.add_resource(kms.Key(
+    "AuthKey",
+    Description=Sub("Key for Authorizer in ${AWS::StackName}"),
     KeyPolicy={
         "Version": "2012-10-17",
         "Statement": [
@@ -222,10 +222,10 @@ vrt_auth_key = template.add_resource(kms.Key(
     Tags=Tags(**vrt_tags),
 ))
 
-vrt_auth_key_alias = template.add_resource(kms.Alias(
-    "VrtAuthKeyAlias",
-    AliasName=Sub('alias/${AWS::StackName}/vrt-auth-key'),
-    TargetKeyId=Ref(vrt_auth_key),
+auth_key_alias = template.add_resource(kms.Alias(
+    "AuthKeyAlias",
+    AliasName=Sub('alias/${AWS::StackName}/auth-key'),
+    TargetKeyId=Ref(auth_key),
 ))
 
 jwt_secret_parameter = template.add_resource(SsmParameter(
@@ -234,7 +234,7 @@ jwt_secret_parameter = template.add_resource(SsmParameter(
     Name=Sub('/${AWS::StackName}/jwt-secret'),
     # WARNING: this name is hard-coded in index.js!!!
     Type="SecureString",
-    KeyId=Ref(vrt_auth_key),
+    KeyId=Ref(auth_key),
     RandomValue={"Serial": '1'},  # Change this to force a new random value
     Tags=Tags(**vrt_tags),
 ))

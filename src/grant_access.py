@@ -11,7 +11,7 @@ import jwt
 import attr
 import structlog
 
-from utils import get_jwt_secret, generate_cookie, VRT_AUTH_ACCESS_COOKIE_NAME
+from utils import get_jwt_secret, generate_cookie, AUTH_ACCESS_COOKIE_NAME
 
 
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
@@ -60,7 +60,7 @@ def handler(event, context) -> dict:
             'headers': {
                 'Content-Type': 'text/html',
                 'Set-Cookie': generate_cookie(
-                    VRT_AUTH_ACCESS_COOKIE_NAME,
+                    AUTH_ACCESS_COOKIE_NAME,
                     request.raw_token,
                     int(request.token['exp']),
                 ),

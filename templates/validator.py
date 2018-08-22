@@ -1,5 +1,5 @@
 """
-VRT validator stack
+Validator stack.
 """
 from central_helpers import MetadataHelper, write_template_to_file
 from central_helpers.vrt import add_tags, StackLinker

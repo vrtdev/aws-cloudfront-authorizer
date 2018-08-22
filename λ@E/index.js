@@ -10,6 +10,7 @@
 
 "use strict";
 
+const util = require('util');
 const JWT = require('jsonwebtoken');
 const AWS = require('aws-sdk');
 

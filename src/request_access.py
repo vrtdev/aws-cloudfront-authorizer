@@ -9,20 +9,15 @@ interpreted as domain-names to include in the token. Their value is ignored,
 which makes it work as expected when the domain names are a set of <input
 type="checkbox">'s.
 """
-import functools
-import json
-import os
 import re
 import time
-import typing
 import urllib.parse
 
 import jwt
 import attr
 import structlog
 
-from utils import get_jwt_secret, validate_login_cookie, NotLoggedInError, main_url
-
+from utils import get_jwt_secret, validate_login_cookie, NotLoggedInError, main_url, get_domains
 
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
 
@@ -31,13 +26,6 @@ structlog.configure(processors=[structlog.processors.JSONRenderer()])
 class GenerateJwtRequest:
     expire: int
     domains: set
-
-
-@functools.lru_cache(maxsize=1)
-def known_domains() -> typing.Set[str]:
-    with open(os.path.join(os.path.dirname(__file__), 'domains.json')) as f:
-        d = json.loads(f.read())
-    return set(d)
 
 
 def validate_request(event: dict) -> GenerateJwtRequest:
@@ -56,7 +44,7 @@ def validate_request(event: dict) -> GenerateJwtRequest:
         if not re.match(r'^[a-zA-Z0-9.-]+$', domain):
             raise ValueError(f"`{domain}` does not look like a domain name")
 
-    if not domains.issubset(known_domains()):
+    if not domains.issubset(get_domains()):
         raise ValueError("Unknown domain requested")
 
     return GenerateJwtRequest(

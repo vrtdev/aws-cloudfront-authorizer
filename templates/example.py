@@ -14,20 +14,20 @@ vrt_tags = add_tags(template)
 authorizer_stack = template.add_parameter(Parameter(
     "AuthorizerStack",
     Type=constants.STRING,
-    Default="vrt-authorizer",
+    Default="authorizer",
     Description="Authorizer stack to import from",
 ))
 
 param_authorizer_lae_arn = template.add_parameter(Parameter(
     "AuthorizerLaeParam",
     Type="AWS::SSM::Parameter::Value<String>",
-    Default='/vrt-authorizer/lae-arn',
+    Default='/authorizer/lae-arn',
     Description="Parameter name to get Lambda@Edge ARN from",
 ))
 
 param_domain_name = template.add_parameter(Parameter(
     "DomainName",
-    Default="example.authorizer.a51.be",
+    Default="example.authorizer.example.org",
     Type=constants.STRING,
     Description="Domain name to use",
 ))

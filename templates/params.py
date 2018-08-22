@@ -1,5 +1,5 @@
 """
-VRT authorizer stack
+Authorizer parameter stack.
 """
 from central_helpers import MetadataHelper, write_template_to_file
 from central_helpers.custom_resources import parameter_store as custom_ssm_ps
@@ -16,7 +16,7 @@ vrt_tags = add_tags(template)
 
 param_authorizer_stack = template.add_parameter(Parameter(
     "ParamAuthorizerStack",
-    Default="vrt-authorizer",
+    Default="authorizer",
     Type=constants.STRING,
 ))
 template_helper.add_parameter_label(param_authorizer_stack, "Authorizer StackName")

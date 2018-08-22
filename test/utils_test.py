@@ -46,7 +46,7 @@ def test_validate_cookie():
 
         token_out = utils.validate_login_cookie({
             'headers': {
-                'Cookie': f'{utils.VRT_AUTH_LOGIN_COOKIE_NAME}={cookie}'
+                'Cookie': f'{utils.AUTH_LOGIN_COOKIE_NAME}={cookie}'
             }
         })
         assert token_in == token_out
