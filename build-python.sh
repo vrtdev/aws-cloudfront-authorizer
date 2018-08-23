@@ -48,6 +48,7 @@ venv/bin/pip install -r "${SRC_DIR}/requirements.txt" -t "${BUILD_DIR}"
 (
     cd "${BUILD_DIR}"
     rm "requirements.txt"
+    find . -name '*.dist-info' -type d -prune -exec rm -rf '{}' ';'
     find . -name '__pycache__' -prune -exec rm -rf '{}' ';'
 
     if [ -n "${HASH_FILE}" ]; then
