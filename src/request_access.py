@@ -4,7 +4,8 @@ Lambda function to generate a JWT to grant access to the staging environment.
 This lambda is called in response to a POST-event. The POST-data (i.e. body)
 should contain a (application/x-www-form-encoded, %-encoded) list of key-value
 pairs. The key `exp` is required, and indicates the expiration time (in seconds
-since 1970-01-01T00:00:00+00:00) of the requested token. All other keys are
+since 1970-01-01T00:00:00+00:00) of the requested token. Key `subject` is also
+required and is an arbitrary text field (may be empty). All other keys are
 interpreted as domain-names to include in the token. Their value is ignored,
 which makes it work as expected when the domain names are a set of <input
 type="checkbox">'s.
@@ -25,6 +26,7 @@ structlog.configure(processors=[structlog.processors.JSONRenderer()])
 @attr.s(slots=True, auto_attribs=True)
 class GenerateJwtRequest:
     expire: int
+    subject: str
     domains: set
 
 
@@ -36,7 +38,10 @@ def validate_request(event: dict) -> GenerateJwtRequest:
     exp = int(values['exp'][0])
     del values['exp']
 
-    if exp > int(time.time()) + 365*24*60*60:
+    subject = values['subject'][0]
+    del values['subject']
+
+    if exp > int(time.time()) + 180*24*60*60:
         raise ValueError("Requested validity too long. Refusing")
 
     domains = set(values.keys())
@@ -49,6 +54,7 @@ def validate_request(event: dict) -> GenerateJwtRequest:
 
     return GenerateJwtRequest(
         expire=exp,
+        subject=subject,
         domains=domains,
     )
 
@@ -59,6 +65,7 @@ def generate_url(url_prefix: str, login_cookie: dict, request: GenerateJwtReques
         'exp': request.expire,
         'domains': list(request.domains),
         'azp': login_cookie['azp'],  # Authorized Party
+        'sub': request.subject,  # subject
     }
     structlog.get_logger().log("Issuing JWT", jwt=token)
     token = jwt.encode(
