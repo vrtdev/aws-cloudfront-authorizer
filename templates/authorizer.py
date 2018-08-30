@@ -55,6 +55,13 @@ param_use_cert = template.add_parameter(Parameter(
 ))
 template_helper.add_parameter_label(param_use_cert, "Use TLS certificate")
 
+adfs_metadata_url = template.add_parameter(Parameter(
+    "AdfsMetadataUrl",
+    Type=constants.STRING,
+    Default='https://adfs.example.com/FederationMetadata/2007-06/FederationMetadata.xml',
+))
+template_helper.add_parameter_label(adfs_metadata_url, "ADFS Metadata Url")
+
 magic_path = '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220'
 
 cognito_user_pool = template.add_resource(cognito.UserPool(
@@ -67,6 +74,21 @@ cognito_user_pool_domain = template.add_resource(custom_resources.cognito.UserPo
     "CognitoUserPoolDomain",
     UserPoolId=Ref(cognito_user_pool),
     # Domain=auto-generated
+))
+
+adfs_provider_name = 'adfs'
+adfs_identity_provider = template.add_resource(custom_resources.cognito.UserPoolIdentityProvider(
+    "AdfsIdentityProvider",
+    UserPoolId=Ref(cognito_user_pool),
+    ProviderName=adfs_provider_name,
+    ProviderType='SAML',
+    ProviderDetails={
+        # Todo: use mapping / parameter
+        'MetadataURL': Ref(adfs_metadata_url),
+    },
+    AttributeMapping={
+        'email': 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+    },
 ))
 
 # Output for ADFS configuration:
@@ -94,8 +116,9 @@ cognito_user_pool_client = template.add_resource(custom_resources.cognito.UserPo
         ]),
     ],
     AllowedOAuthFlows=["code"],
-    AllowedOAuthScopes=["openid", "aws.cognito.signin.user.admin"],
-    SupportedIdentityProviders=["COGNITO"],
+    AllowedOAuthScopes=["openid", "email", "profile", "aws.cognito.signin.user.admin"],
+    AllowedOAuthFlowsUserPoolClient=True,
+    SupportedIdentityProviders=["COGNITO", adfs_provider_name],
     GenerateSecret=True,
 ))
 
