@@ -5,9 +5,11 @@ from central_helpers import MetadataHelper, write_template_to_file
 from central_helpers.vrt import add_tags, StackLinker
 from troposphere import Template, constants, Parameter, awslambda, Ref, Tags, Output
 
-from custom_resources.LambdaVersion import LambdaVersion
+import custom_resources.awslambda
 
 template = Template()
+
+custom_resources.use_custom_resources_stack_name_parameter(template)
 
 stack_linker = StackLinker(template)
 
@@ -58,9 +60,8 @@ validator_lambda = template.add_resource(awslambda.Function(
     Tags=Tags(ConfigBucket=Ref(param_config_bucket), **vrt_tags),
 ))
 
-validator_version = template.add_resource(LambdaVersion(
+validator_version = template.add_resource(custom_resources.awslambda.Version(
     "ValidatorVersion",
-    ServiceToken=stack_linker.CRST_LambdaVersion,
     FunctionName=Ref(validator_lambda),
     Dummy=Ref(param_s3_key),  # Trigger update on function update
 ))
