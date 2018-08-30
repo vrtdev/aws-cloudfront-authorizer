@@ -228,7 +228,7 @@ auth_key = template.add_resource(kms.Key(
             {
                 "Sid": "Allow encrypting things",
                 "Effect": "Allow",
-                "Principal": {"AWS": stack_linker.CRR_SsmParameter},
+                "Principal": {"AWS": custom_resources.ssm.Parameter.role()},
                 "Action": "kms:Encrypt",
                 "Resource": "*",
             },
