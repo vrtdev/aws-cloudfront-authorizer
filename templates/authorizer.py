@@ -4,14 +4,15 @@ Authorizer stack.
 from central_helpers import MetadataHelper, write_template_to_file, \
     kms as kms_helpers, resource2var, mappings
 from central_helpers.vrt import add_tags, StackLinker
-from custom_resources.SsmParameter import SsmParameter
-from custom_resources.AcmDnsValidatedCertificate import AcmDnsValidatedCertificate
-from custom_resources.CognitoUserPoolClient import CognitoUserPoolClient
-from custom_resources.CognitoUserPoolDomain import CognitoUserPoolDomain
 from troposphere import Template, Parameter, Ref, Sub, Tags, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
     Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3
+import custom_resources.ssm
+import custom_resources.acm
+import custom_resources.cognito
 
 template = Template()
+
+custom_resources.use_custom_resources_stack_name_parameter(template)
 
 stack_linker = StackLinker(template)
 
@@ -62,9 +63,8 @@ cognito_user_pool = template.add_resource(cognito.UserPool(
     UserPoolTags=vrt_tags,
 ))
 
-cognito_user_pool_domain = template.add_resource(CognitoUserPoolDomain(
+cognito_user_pool_domain = template.add_resource(custom_resources.cognito.UserPoolDomain(
     "CognitoUserPoolDomain",
-    ServiceToken=stack_linker.CRST_CognitoUserPoolDomain2,
     UserPoolId=Ref(cognito_user_pool),
     # Domain=auto-generated
 ))
@@ -82,9 +82,8 @@ template.add_output(Output(
     Value=Sub("urn:amazon:cognito:sp:{id}".format(id=resource2var(cognito_user_pool))),
 ))
 
-cognito_user_pool_client = template.add_resource(CognitoUserPoolClient(
+cognito_user_pool_client = template.add_resource(custom_resources.cognito.UserPoolClient(
     "CognitoUserPoolClient",
-    ServiceToken=stack_linker.CRST_CognitoUserPoolClient2,
     UserPoolId=Ref(cognito_user_pool),
     ClientName="vrt-authorizer",
     CallbackURLs=[
@@ -228,9 +227,8 @@ auth_key_alias = template.add_resource(kms.Alias(
     TargetKeyId=Ref(auth_key),
 ))
 
-jwt_secret_parameter = template.add_resource(SsmParameter(
+jwt_secret_parameter = template.add_resource(custom_resources.ssm.Parameter(
     "JwtSecretParameter",
-    ServiceToken=stack_linker.CRST_SsmParameter,
     Name=Sub('/${AWS::StackName}/jwt-secret'),
     # WARNING: this name is hard-coded in index.js!!!
     Type="SecureString",
@@ -384,9 +382,8 @@ template.add_output(Output(
     Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'magic-path'])),
 ))
 
-acm_cert = template.add_resource(AcmDnsValidatedCertificate(
+acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCertificate(
     "AcmCert",
-    ServiceToken=stack_linker.CRST_AcmDnsValidatedCertificate,
     Region='us-east-1',  # Api gateway is in us-east-1
     DomainName=Ref(param_domain_name),
     Tags=Tags(**vrt_tags),
