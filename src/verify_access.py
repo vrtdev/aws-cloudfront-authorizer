@@ -48,6 +48,9 @@ def handler(event, context) -> dict:
         structlog.get_logger().log("Invalid request", exception=e)
         return {
             'statusCode': 400,
+            'headers': {
+                'Content-Type': 'text/plain',
+            },
             'body': 'You do not have access to this site.',
         }
 
