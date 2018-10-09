@@ -86,6 +86,7 @@ def handler(event, context) -> dict:
 
     set_cookies_headers = {
         # TODO: fix this
+        # NO LONGER NEEDED: https://aws.amazon.com/about-aws/whats-new/2018/10/amazon-api-gateway-adds-support-for-multi-parameters/
         # This is a workaround for API Gateway
         # API gateway does not support multiple headers with the same name,
         # such as needed to set multiple cookies
