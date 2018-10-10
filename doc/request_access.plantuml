@@ -44,7 +44,7 @@ note over browser: User selects domains & duration
 
 group Request token
 
-browser -> auth: POST /request_access\nCookie: vrt_authorizer_login=JWT(username)\nData: exp=1234&domain1=checked&domain2=checked&...
+browser -> auth: POST /request_access\nCookie: vrt_authorizer_login=JWT(username)\nData: exp=1234&subject=Foobar&domain1=checked&domain2=checked&...
 note right of auth: request_access.py
 browser <- auth: 200 URL_from(JWT(username, domains, exp))
 

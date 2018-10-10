@@ -134,7 +134,7 @@ present, the browser is redirected to the authorizer domain to check the
 
 ![Sequence diagram of a browser accessing a restricted site](use_access.png)
 
-In order to do this Cookie-QueryParamete-Cookie dance, we need to hijack at
+In order to do this Cookie-QueryParameter-Cookie dance, we need to hijack at
 least one URL from the protected domain. This does change the observable
 behaviour, but by choosing `/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220`,
 it's unlikely to actually impact the site.
@@ -202,6 +202,8 @@ since it only contains non-secret information:
  * The expiration time of the access
 
  * The username of the person that generated the token
+ 
+ * A free-text field describing the granted access
 
 Since the party issuing tokens, and the party verifying tokens are the same, we
 choose the faster and lighter `HS256` algorithm. The secret for the JWTs is
