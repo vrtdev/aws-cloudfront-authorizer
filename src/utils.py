@@ -28,6 +28,9 @@ def get_jwt_secret() -> str:
 def canonicalize_headers(
         headers: typing.Union[typing.Dict[str, str], typing.List[typing.Tuple[str, str]]]
 ) -> typing.Dict[str, typing.List[str]]:
+    """
+    HTTP headers are case-insensitive. Join equivalent headers together.
+    """
     if isinstance(headers, dict):
         headers = [
             (k, v)
@@ -45,6 +48,11 @@ def canonicalize_headers(
 
 
 def generate_case_variants(header_name: str) -> typing.Iterable[str]:
+    """
+    Generates strings based on header_name by varying the case of the letters.
+
+    e.g. "Set-Cookie" -> ["Set-Cookie", "Set-CookiE", "Set-CookIe", ...]
+    """
     swapped_header_name = header_name.swapcase()
 
     swappable_letters = []
@@ -99,6 +107,9 @@ def validate_login_cookie(event: dict) -> dict:
 
 
 def generate_cookie(key: str, value: str, max_age: int = None, path: str = None) -> str:
+    """
+    Generate the string usable in a Set-Cookie:-header.
+    """
     cookie = cookies.Morsel()
     cookie.set(
         key=key,
@@ -115,6 +126,7 @@ def generate_cookie(key: str, value: str, max_age: int = None, path: str = None)
 
 
 def main_url(event):
+    del event  # unused
     return f"https://{os.environ['DOMAIN_NAME']}/"
     # region = os.environ['AWS_REGION']
     # api_id = event['requestContext']['apiId']
@@ -123,6 +135,9 @@ def main_url(event):
 
 
 def url_origin(url: str) -> str:
+    """
+    Return the protocol & domain-name (without path)
+    """
     parts = url.split('/')
     return '/'.join(parts[0:3])
 

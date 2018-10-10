@@ -1,8 +1,9 @@
 """
-Lambda function to generate a HTML page with <iframes>, one for each domain.
+Lambda function to actually grant access.
 
-This lambda will "duplicate" a single JWT token to multiple domains: It will
-render an HTML-page with <iframe>'s, one for each domain listed in the JWT.
+This lambda will actually grant the access by setting the authorization cookie.
+It also generates an HTML page to list links to all granted URLs. The HTML is
+taken from grant_access.html, with some strings dynamically replaced.
 """
 import json
 import os
@@ -41,6 +42,8 @@ def validate_request(event: dict) -> GrantAccessRequest:
 
 
 def handler(event, context) -> dict:
+    del context  # unused
+
     try:
         request = validate_request(event)
     except (KeyError, jwt.InvalidTokenError) as e:

@@ -1,5 +1,7 @@
 """
-Lambda function to issue CloudFront cookies granting access.
+Lambda function to set cookie(s).
+
+This function is used to copy cookies between domains.
 
 Required GET-parameters:
   - token: JWT containing the authorization of the user
@@ -66,6 +68,8 @@ def generate_cookie_headers(request: SetCookieRequest) -> typing.List[str]:
 
 
 def handler(event, context) -> dict:
+    del context  # unused
+
     try:
         request = validate_request(event)
         structlog.get_logger().log("Valid request", request=request)
@@ -109,14 +113,14 @@ def handler(event, context) -> dict:
             },
             'body': 'Redirecting...'
         }
-
-    return {
-        'statusCode': 200,
-        'headers': {
-            'Content-Type': 'text/plain',
-            **set_cookies_headers,
-        },
-        'body': f"Access granted to: {request.domain}\n"
-                f"Valid until {time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime(request.expire))} "
-                f"({request.expire})\n",
-    }
+    else:
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'text/plain',
+                **set_cookies_headers,
+            },
+            'body': f"Access granted to: {request.domain}\n"
+                    f"Valid until {time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime(request.expire))} "
+                    f"({request.expire})\n",
+        }

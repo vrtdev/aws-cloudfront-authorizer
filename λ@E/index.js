@@ -10,12 +10,12 @@
 
 "use strict";
 
-const util = require('util');
 const JWT = require('jsonwebtoken');
 const AWS = require('aws-sdk');
 
 
 function asyncLambdaGetFunction(param, service_param = {}) {
+    // Async wrapper around the Lambda GetFunction API call
     return new Promise(function(resolve, reject) {
         const lambda = new AWS.Lambda(service_param);
         lambda.getFunction(param, function(err, data) {
@@ -26,6 +26,9 @@ function asyncLambdaGetFunction(param, service_param = {}) {
 }
 
 async function get_config_bucket(context) {
+    /* Lambda@Edge does not support environment parameters.
+     * We use Tags as workaround. This function gets the value of the tag.
+     */
     const dot_location = context.functionName.indexOf('.');
     const functionName_without_region = context.functionName.substring(dot_location + 1);
     const lambda_description = await asyncLambdaGetFunction({
@@ -38,6 +41,7 @@ async function get_config_bucket(context) {
 }
 
 function asyncS3GetObject(param) {
+    // Async wrapper around the S3 GetObject API call
     return new Promise(function(resolve, reject) {
         const s3 = new AWS.S3();
         s3.getObject(param, function(err, data) {
@@ -79,8 +83,8 @@ function get_config_promise(context) {
 
 
 function get_jwt_secret_promise(region, param_name) {
-    if(typeof get_jwt_secret_promise.promise === 'undefined') {
-        get_jwt_secret_promise.promise = new Promise(function(resolve, reject) {
+    if(typeof get_jwt_secret_promise.cache === 'undefined') {
+        get_jwt_secret_promise.cache = new Promise(function(resolve, reject) {
             const ssm = new AWS.SSM({
                 'region': region,
             });
@@ -95,7 +99,7 @@ function get_jwt_secret_promise(region, param_name) {
             );
         });
     }
-    return get_jwt_secret_promise.promise;
+    return get_jwt_secret_promise.cache;
 }
 
 function encode_utf8(s) {

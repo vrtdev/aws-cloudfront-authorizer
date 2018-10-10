@@ -1,3 +1,9 @@
+"""
+Lambda function to check the authorizer cookie.
+
+This function verifies the cookie to be valid. It either returns a 400, or a 302
+to the given `return_to` URL.
+"""
 import os
 from http import cookies
 from urllib.parse import urlsplit, urlunsplit, urlencode
@@ -42,6 +48,8 @@ def validate_request(event: dict) -> VerifyAccessRequest:
 
 
 def handler(event, context) -> dict:
+    del context  # unused
+
     try:
         request = validate_request(event)
     except (KeyError, jwt.InvalidTokenError) as e:

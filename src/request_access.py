@@ -20,6 +20,7 @@ import structlog
 
 from utils import get_jwt_secret, validate_login_cookie, NotLoggedInError, main_url, get_domains
 
+
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
 
 
@@ -78,6 +79,8 @@ def generate_url(url_prefix: str, login_cookie: dict, request: GenerateJwtReques
 
 
 def handler(event, context) -> dict:
+    del context  # unused
+
     domain_prefix = main_url(event)
 
     try:

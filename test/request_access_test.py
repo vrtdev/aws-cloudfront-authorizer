@@ -15,26 +15,28 @@ def test_validate():
 
     with mock.patch('src.request_access.get_domains', return_value=set()):
         req = request_access.validate_request({
-            'body': 'exp=42'
+            'body': 'exp=42&subject=foobar'
         })
         assert req.expire == 42
+        assert req.subject == 'foobar'
         assert req.domains == set()
 
     with mock.patch('src.request_access.get_domains', return_value={'example.org', 'example.com'}):
         req = request_access.validate_request({
-            'body': 'exp=42&example.org=on&example.com=checked'
+            'body': 'exp=42&subject=foobar&example.org=on&example.com=checked'
         })
     assert req.expire == 42
+    assert req.subject == 'foobar'
     assert req.domains == {'example.com', 'example.org'}
 
     with pytest.raises(ValueError):
         request_access.validate_request({
-            'body': f'exp={int(time.time())+400*24*60*60}&example.org=on&example.com=checked'
+            'body': f'exp={int(time.time())+400*24*60*60}&subject=foobar&example.org=on&example.com=checked'
         })
 
     with pytest.raises(ValueError):
         request_access.validate_request({
-            'body': 'exp=42&example.org/foobar=on&example.com=checked'
+            'body': 'exp=42&subject=foobar&example.org/foobar=on&example.com=checked'
         })
 
 
@@ -48,6 +50,7 @@ def test_url():
             login_cookie={'azp': 'test'},
             request=request_access.GenerateJwtRequest(
                 expire=in_5_seconds,
+                subject='foobar',
                 domains={'example.com', 'example.org'},
             )
         )
@@ -67,6 +70,7 @@ def test_handler():
         in_5_seconds = int(time.time()) + 5
         req.return_value = request_access.GenerateJwtRequest(
             expire=in_5_seconds,
+            subject='foobar',
             domains={'example.com', 'example.net'}
         )
         os.environ['DOMAIN_NAME'] = 'auth.example.org'

@@ -27,6 +27,9 @@ structlog.configure(processors=[structlog.processors.JSONRenderer()])
 
 
 def redirect(event):
+    """
+    Issue a redirect to Cognito.
+    """
     region = os.environ['AWS_REGION']
     domain_prefix = os.environ['COGNITO_DOMAIN_PREFIX']
     client_id = os.environ['COGNITO_CLIENT_ID']
@@ -61,22 +64,6 @@ def redirect(event):
     }
 
 
-def index_page(extra_headers: typing.Dict[str, str] = None):
-    if extra_headers is None:
-        extra_headers = {}
-
-    structlog.get_logger().msg("Rendering index HTML")
-    with open(os.path.join(os.path.dirname(__file__), 'index.html')) as f:
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Content-Type': 'text/html',
-                **extra_headers,
-            },
-            'body': f.read(),
-        }
-
-
 class InternalServerError(Exception):
     pass
 
@@ -87,10 +74,10 @@ class BadRequest(Exception):
 
 def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
     """
-    Validate a Cognito Code for an ID-token.
+    Validate a Cognito Code and fetch the associated ID-token.
     Returns the identity-token.
     Raises BadRequest (client's fault) or InternalServerError (config or backend issue)
-    :raises: InternalServerError, BadRequest
+    :raises: BadRequest, InternalServerError
     """
     region = os.environ['AWS_REGION']
     domain_prefix = os.environ['COGNITO_DOMAIN_PREFIX']
@@ -150,7 +137,28 @@ def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
             raise InternalServerError() from e
 
 
+def index_page(extra_headers: typing.Dict[str, str] = None):
+    """
+    Render the index page.
+    """
+    if extra_headers is None:
+        extra_headers = {}
+
+    structlog.get_logger().msg("Rendering index HTML")
+    with open(os.path.join(os.path.dirname(__file__), 'index.html')) as f:
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'text/html',
+                **extra_headers,
+            },
+            'body': f.read(),
+        }
+
+
 def handler(event, context):
+    del context  # unused
+
     try:
         try:  # Assume user is logged in
             validate_login_cookie(event)
