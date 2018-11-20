@@ -93,7 +93,7 @@ def handler(event, context) -> dict:
             'statusCode': 403,
             'body': 'Not logged in',
         }
-    except ValueError as e:
+    except (ValueError, KeyError) as e:
         structlog.get_logger().log("Invalid request", exception=e)
         return {
             'statusCode': 400,
