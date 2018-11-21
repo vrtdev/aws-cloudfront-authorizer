@@ -51,7 +51,7 @@
 
   </form>
   <script type="application/javascript">
-	  var expiresInOneDay = new Date().getTime() + 86400*1000;
+	  var expiresInOneDay = (new Date().getTime() / 1000 | 0) + 86400;
 	  document.getElementById('exp').value = expiresInOneDay;
 
     var xhr = new XMLHttpRequest();
