@@ -25,19 +25,29 @@
             display: flex;
             -ms-flex-align: center;
             align-items: center;
+            flex-direction: column;
             padding-top: 40px;
             padding-bottom: 40px;
             background-color: #f5f5f5;
         }
 
-        .form-signin {
+        .form-signin,
+        .authorizer-response {
             width: 100%;
             max-width: 480px;
             padding: 30px 25px;
-            margin: auto;
+            margin: 2rem auto;
             background: white;
             border-radius: 5px;
             box-shadow: 0 0 35px rgba(0, 0, 0, .1);
+        }
+
+        .authorizer-response {
+            display: none;
+        }
+
+        .authorizer-response.show {
+            display: block;
         }
 
         #domains {
@@ -74,6 +84,8 @@
     <input class="btn btn-primary" type="submit"/>
 </form>
 
+<div class="authorizer-response"></div>
+
 <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
         integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
         crossorigin="anonymous"></script>
@@ -89,23 +101,52 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.1.2/js/tempusdominus-bootstrap-4.min.js"
         integrity="sha256-z0oKYg6xiLq3yJGsp/LsY9XykbweQlHl42jHv2XTBz4="
         crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fetch/3.0.0/fetch.min.js"
+        integrity="sha256-E1M+0f/hvoNVoV8K5RSn1gwe4EFwlvORnOrFzghX0wM="
+        crossorigin="anonymous"></script>
 
 <script type="application/javascript">
-    var currentDateTime = new Date();
+    var dateTime = new Date();
+    var formSignIn = document.querySelector('.form-signin');
+    var inputExp = formSignIn.querySelector('#exp');
     var dateTimePicker = $('#datetimepicker1');
-    var inputExp = document.querySelector('#exp');
+    var authorizerResponse = document.querySelector('.authorizer-response');
+
+    var syncDateTime = function (event) {
+        inputExp.value = event.date.valueOf() / 1000 | 0 || ''
+    };
+
+    formSignIn.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        fetch('/request_access')
+            .then(function (response) {
+                if (response.status !== 200)
+                    throw new Error(response.statusText);
+
+                return response.text()
+            })
+            .then(function (body) {
+                if (body.indexOf('http') === 0)
+                    body = '<a href="' + body + '">' + body + '</a>';
+                authorizerResponse.innerHTML = body;
+                authorizerResponse.classList.add('show');
+            })
+            .catch(function (ex) {
+                authorizerResponse.innerHTML = ex;
+                authorizerResponse.classList.add('show');
+            });
+    });
 
     dateTimePicker.datetimepicker({
         format: 'DD/MM/YYYY HH:MM',
-        minDate: currentDateTime,
-        defaultDate: currentDateTime.setDate(currentDateTime.getDate() + 1)
+        minDate: dateTime,
+        defaultDate: dateTime.setDate(dateTime.getDate() + 1)
     });
 
-    dateTimePicker.on('change.datetimepicker', (event) => {
-        inputExp.value = event.date.valueOf() || ''
-    });
+    dateTimePicker.on('change.datetimepicker', syncDateTime);
 
-    var expiresInOneDay = (new Date().getTime() / 1000 | 0) + 86400;
+    var expiresInOneDay = dateTime.getTime() / 1000 | 0;
     document.getElementById('exp').value = expiresInOneDay;
 
     var xhr = new XMLHttpRequest();
