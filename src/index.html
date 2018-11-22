@@ -3,86 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <title>Login</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <link rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+          integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
+          crossorigin="anonymous">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.1.2/css/tempusdominus-bootstrap-4.css"
+          integrity="sha256-XPTBwC3SBoWHSmKasAk01c08M6sIA5gF5+sRxqak2Qs="
+          crossorigin="anonymous"/>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+          integrity="sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0="
+          crossorigin="anonymous"/>
     <style media="screen">
-      html, body {
-        height: 100%;
-      }
-      body {
-        display: -ms-flexbox;
-        display: flex;
-        -ms-flex-align: center;
-        align-items: center;
-        padding-top: 40px;
-        padding-bottom: 40px;
-        background-color: #f5f5f5;
-      }
-      .form-signin {
-        width: 100%;
-        max-width: 480px;
-        padding: 30px 25px;
-        margin: auto;
-        background: white;
-        border-radius: 5px;
-        box-shadow: 0 0 35px rgba(0,0,0,.1);
-      }
-      #domains {
-        margin-bottom: 2em;
-      }
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            display: -ms-flexbox;
+            display: flex;
+            -ms-flex-align: center;
+            align-items: center;
+            padding-top: 40px;
+            padding-bottom: 40px;
+            background-color: #f5f5f5;
+        }
+
+        .form-signin {
+            width: 100%;
+            max-width: 480px;
+            padding: 30px 25px;
+            margin: auto;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 0 35px rgba(0, 0, 0, .1);
+        }
+
+        #domains {
+            margin-bottom: 2em;
+        }
     </style>
 </head>
 <body>
-  <form class="form-signin" method="post" action="request_access">
+
+<form class="form-signin" method="post" action="request_access">
     <h1>Request access</h1>
+
     <div class="form-group">
-      <label for="exp">Exp</label>
-      <input class="form-control" type="text" name="exp" id="exp" />
+        <label for="exp">Exp</label>
+        <input class="form-control" type="hidden" name="exp" id="exp"/>
+        <div class="input-group date" id="datetimepicker1" data-target-input="nearest">
+            <input type="text" class="form-control datetimepicker-input" data-target="#datetimepicker1"/>
+            <div class="input-group-append" data-target="#datetimepicker1" data-toggle="datetimepicker">
+                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+            </div>
+        </div>
     </div>
+
     <div class="form-group">
-      <label for="subject">Subject</label>
-      <input class="form-control" type="text" name="subject" id="subject" value="Access to website"/>
+        <label for="subject">Subject</label>
+        <input class="form-control" type="text" name="subject" id="subject" value="Access to website"/>
     </div>
+
     <fieldset class="form-group">
-      <legend>Domains</legend>
-      <div id="domains"></div>
+        <legend>Domains</legend>
+        <div id="domains"></div>
     </fieldset>
 
     <input class="btn btn-primary" type="submit"/>
+</form>
 
-  </form>
-  <script type="application/javascript">
-	  var expiresInOneDay = (new Date().getTime() / 1000 | 0) + 86400;
-	  document.getElementById('exp').value = expiresInOneDay;
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"
+        integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"
+        integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"
+        integrity="sha256-CutOzxCRucUsn6C6TcEYsauvvYilEniTXldPa6/wu0k="
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.1.2/js/tempusdominus-bootstrap-4.min.js"
+        integrity="sha256-z0oKYg6xiLq3yJGsp/LsY9XykbweQlHl42jHv2XTBz4="
+        crossorigin="anonymous"></script>
+
+<script type="application/javascript">
+    var currentDateTime = new Date();
+    var dateTimePicker = $('#datetimepicker1');
+    var inputExp = document.querySelector('#exp');
+
+    dateTimePicker.datetimepicker({
+        format: 'DD/MM/YYYY HH:MM',
+        minDate: currentDateTime,
+        defaultDate: currentDateTime.setDate(currentDateTime.getDate() + 1)
+    });
+
+    dateTimePicker.on('change.datetimepicker', (event) => {
+        inputExp.value = event.date.valueOf() || ''
+    });
+
+    var expiresInOneDay = (new Date().getTime() / 1000 | 0) + 86400;
+    document.getElementById('exp').value = expiresInOneDay;
 
     var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState == 4 && xhr.status == 200)
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status === 200)
             var div = document.getElementById('domains');
-            var domains = JSON.parse(xhr.responseText);
 
-            for(var domain in domains) {
-                var container = document.createElement('div');
-                container.className = 'form-check';
-                var label = document.createElement('label');
-                label.className = "form-check-label";
-                label.setAttribute("for", domains[domain]);
-                var el = document.createElement('input');
-                el.setAttribute("id", domains[domain]);
-                el.name = domains[domain];
-                el.className = "form-check-input";
-                el.type = "checkbox";
-                //el.checked = "checked";
-                label.appendChild(document.createTextNode(domains[domain]));
-                container.appendChild(el);
-                container.appendChild(label);
-                div.appendChild(container);
-            }
+        var domains = JSON.parse(xhr.responseText);
+
+        for (var domain in domains) {
+            var container = document.createElement('div');
+            container.className = 'form-check';
+
+            var label = document.createElement('label');
+            label.className = "form-check-label";
+            label.setAttribute("for", domains[domain]);
+
+            var el = document.createElement('input');
+            el.setAttribute("id", domains[domain]);
+            el.name = domains[domain];
+            el.className = "form-check-input";
+            el.type = "checkbox";
+            //el.checked = "checked";
+            label.appendChild(document.createTextNode(domains[domain]));
+            container.appendChild(el);
+            container.appendChild(label);
+            div.appendChild(container);
+        }
     };
     xhr.open("GET", 'domain_list', true);
     xhr.send(null);
-  </script>
-  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+</script>
 </body>
 </html>
