@@ -119,7 +119,13 @@
     formSignIn.addEventListener('submit', function (e) {
         e.preventDefault();
 
-        fetch('/request_access')
+        var formData = new URLSearchParams(new FormData(formSignIn));
+
+        fetch('/request_access', {
+            credentials: 'include',
+            method: 'post',
+            body: formData
+        })
             .then(function (response) {
                 if (response.status !== 200)
                     throw new Error(response.statusText);
