@@ -1,7 +1,7 @@
 """
 Authorizer stack.
 """
-from central_helpers import MetadataHelper, write_template_to_file, \
+from central_helpers import write_template_to_file, \
     kms as kms_helpers, resource2var, mappings
 from central_helpers.vrt import add_tags, StackLinker
 from troposphere import Template, Parameter, Ref, Sub, Tags, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
@@ -16,7 +16,6 @@ custom_resources.use_custom_resources_stack_name_parameter(template)
 
 stack_linker = StackLinker(template)
 
-template_helper = MetadataHelper(template)
 vrt_tags = add_tags(template)
 
 template.add_transform('AWS::Serverless-2016-10-31')
@@ -27,7 +26,7 @@ param_s3_bucket_name = template.add_parameter(Parameter(
     Type=constants.STRING,
     Description="Location of the Lambda ZIP file, bucket name",
 ))
-template_helper.add_parameter_label(param_s3_bucket_name, "Lambda S3 bucket")
+template.set_parameter_label(param_s3_bucket_name, "Lambda S3 bucket")
 
 param_s3_key = template.add_parameter(Parameter(
     "S3Key",
@@ -35,7 +34,7 @@ param_s3_key = template.add_parameter(Parameter(
     Type=constants.STRING,
     Description="Location of the Lambda ZIP file, path",
 ))
-template_helper.add_parameter_label(param_s3_key, "Lambda S3 key")
+template.set_parameter_label(param_s3_key, "Lambda S3 key")
 
 param_domain_name = template.add_parameter(Parameter(
     "DomainName",
@@ -43,7 +42,7 @@ param_domain_name = template.add_parameter(Parameter(
     Type=constants.STRING,
     Description="Domain name to use",
 ))
-template_helper.add_parameter_label(param_domain_name, "Domain name")
+template.set_parameter_label(param_hosted_zone_name, "Hosted Zone Name")
 
 param_use_cert = template.add_parameter(Parameter(
     "UseCert",
@@ -53,14 +52,14 @@ param_use_cert = template.add_parameter(Parameter(
     # This avoids stacks failing since the cert is not approved yet
     Description="Use TLS certificate"
 ))
-template_helper.add_parameter_label(param_use_cert, "Use TLS certificate")
+template.set_parameter_label(param_use_cert, "Use TLS certificate")
 
 adfs_metadata_url = template.add_parameter(Parameter(
     "AdfsMetadataUrl",
     Type=constants.STRING,
     Default='https://adfs.example.com/FederationMetadata/2007-06/FederationMetadata.xml',
 ))
-template_helper.add_parameter_label(adfs_metadata_url, "ADFS Metadata Url")
+template.set_parameter_label(adfs_metadata_url, "ADFS Metadata Url")
 
 magic_path = '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220'
 

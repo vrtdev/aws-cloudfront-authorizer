@@ -1,4 +1,4 @@
-from central_helpers import MetadataHelper, write_template_to_file, mappings
+from central_helpers import write_template_to_file, mappings
 from central_helpers.vrt import add_tags, StackLinker
 from troposphere import Template, Tags, cloudfront, constants, ImportValue, Sub, Join, Parameter, Ref, Output, GetAtt, \
     Equals, AWS_NO_VALUE, If, route53, FindInMap, AWS_REGION
@@ -10,7 +10,6 @@ custom_resources.use_custom_resources_stack_name_parameter(template)
 
 stack_linker = StackLinker(template)
 
-template_helper = MetadataHelper(template)
 vrt_tags = add_tags(template)
 
 authorizer_stack = template.add_parameter(Parameter(
@@ -19,6 +18,7 @@ authorizer_stack = template.add_parameter(Parameter(
     Default="authorizer",
     Description="Authorizer stack to import from",
 ))
+template.set_parameter_label(authorizer_stack, "Authorizer stack")
 
 param_authorizer_lae_arn = template.add_parameter(Parameter(
     "AuthorizerLaeParam",
@@ -26,6 +26,7 @@ param_authorizer_lae_arn = template.add_parameter(Parameter(
     Default='/authorizer/lae-arn',
     Description="Parameter name to get Lambda@Edge ARN from",
 ))
+template.set_parameter_label("Authorizer Lambda@Edge parameter")
 
 param_domain_name = template.add_parameter(Parameter(
     "DomainName",
@@ -43,7 +44,7 @@ param_use_cert = template.add_parameter(Parameter(
     # This avoids stacks failing since the cert is not approved yet
     Description="Use TLS certificate"
 ))
-template_helper.add_parameter_label(param_use_cert, "Use TLS certificate")
+template.set_parameter_label(param_use_cert, "Use TLS certificate")
 
 acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCertificate(
     "AcmCert",

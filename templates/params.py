@@ -1,7 +1,7 @@
 """
 Authorizer parameter stack.
 """
-from central_helpers import MetadataHelper, write_template_to_file
+from central_helpers import write_template_to_file
 from central_helpers.vrt import add_tags, StackLinker
 from troposphere import Template, Parameter, Ref, Sub, Tags, Output, Export, Join, AWS_STACK_NAME, constants, \
     ImportValue
@@ -13,7 +13,6 @@ custom_resources.use_custom_resources_stack_name_parameter(template)
 
 stack_linker = StackLinker(template)
 
-template_helper = MetadataHelper(template)
 vrt_tags = add_tags(template)
 
 param_authorizer_stack = template.add_parameter(Parameter(
@@ -21,14 +20,14 @@ param_authorizer_stack = template.add_parameter(Parameter(
     Default="authorizer",
     Type=constants.STRING,
 ))
-template_helper.add_parameter_label(param_authorizer_stack, "Authorizer StackName")
+template.set_parameter_label(param_authorizer_stack, "Authorizer StackName")
 
 param_laearn = template.add_parameter(Parameter(
     "ParamLaeArn",
     Type=constants.STRING,
     Description="ARN of the Lambda@Edge function",
 ))
-template_helper.add_parameter_label(param_laearn, "Lambda@Edge ARN")
+template.set_parameter_label(param_laearn, "Lambda@Edge ARN")
 
 
 template.add_output(Output(
