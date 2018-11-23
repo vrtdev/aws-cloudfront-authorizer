@@ -2,7 +2,7 @@
 Authorizer stack.
 """
 from central_helpers import write_template_to_file, \
-    kms as kms_helpers, resource2var, mappings
+    kms as kms_helpers, resource2var
 
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
     Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3
@@ -10,6 +10,7 @@ import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
 import custom_resources.cloudformation
+import cfnutils.mappings
 
 
 template = Template()
@@ -443,7 +444,7 @@ api_domain_mapping = template.add_resource(apigateway.BasePathMapping(
 ))
 
 hosted_zone_map = "HostedZoneMap"
-template.add_mapping(hosted_zone_map, mappings.hosted_zone_map())
+template.add_mapping(hosted_zone_map, cfnutils.mappings.r53_hosted_zone_id())
 
 template.add_resource(route53.RecordSetType(
     "DomainA",

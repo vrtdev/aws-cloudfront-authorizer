@@ -4,3 +4,4 @@ troposphere>=2.3.4
 flake8
 git+ssh://git@git.vrt.be:7999/dpcops/aws-cloudformation-helpers.git@master#egg=central-helpers
 git+https://github.com/vrtdev/custom-resources.git@master#egg=custom-resources
+git+https://github.com/vrtdev/aws-cloudformation-utils.git@master#egg=aws-cloudformation-utils

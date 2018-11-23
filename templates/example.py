@@ -1,8 +1,9 @@
-from central_helpers import write_template_to_file, mappings
+from central_helpers import write_template_to_file
 from troposphere import Template, cloudfront, constants, ImportValue, Sub, Join, Parameter, Ref, Output, GetAtt, \
     Equals, AWS_NO_VALUE, If, route53, FindInMap, AWS_REGION
 import custom_resources.acm
 import custom_resources.cloudformation
+import cfnutils.mappings
 
 template = Template()
 
@@ -148,7 +149,7 @@ example_distribution = template.add_resource(cloudfront.Distribution(
 ))
 
 hosted_zone_map = "HostedZoneMap"
-template.add_mapping(hosted_zone_map, mappings.hosted_zone_map())
+template.add_mapping(hosted_zone_map, cfnutils.mappings.r53_hosted_zone_id())
 
 template.add_resource(route53.RecordSetType(
     "DomainA",
