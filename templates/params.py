@@ -4,16 +4,14 @@ Authorizer parameter stack.
 This stack gathers the information needed to use the Authorizer in one place.
 """
 from central_helpers import write_template_to_file
-from central_helpers.vrt import add_tags
-from troposphere import Template, Parameter, Ref, Sub, Tags, Output, Export, Join, AWS_STACK_NAME, constants, \
-    ImportValue
+from troposphere import Template, Parameter, Ref, Sub, Output, Export, Join, AWS_STACK_NAME, constants, \
+    ImportValue, GetAtt
 import custom_resources.ssm
+import custom_resources.cloudformation
 
 template = Template()
 
 custom_resources.use_custom_resources_stack_name_parameter(template)
-
-vrt_tags = add_tags(template)
 
 param_authorizer_stack = template.add_parameter(Parameter(
     "ParamAuthorizerStack",
@@ -29,6 +27,7 @@ param_laearn = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(param_laearn, "Lambda@Edge ARN")
 
+cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
 
 template.add_output(Output(
     "ApiDomain",
@@ -53,7 +52,7 @@ lae_arn = template.add_resource(custom_resources.ssm.Parameter(
     Name=Sub('/${AWS::StackName}/lae-arn'),
     Type="String",
     Value=Ref(param_laearn),
-    Tags=Tags(**vrt_tags),
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 template.add_output(Output(
     "LaeArnParameter",

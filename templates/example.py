@@ -1,14 +1,12 @@
 from central_helpers import write_template_to_file, mappings
-from central_helpers.vrt import add_tags
-from troposphere import Template, Tags, cloudfront, constants, ImportValue, Sub, Join, Parameter, Ref, Output, GetAtt, \
+from troposphere import Template, cloudfront, constants, ImportValue, Sub, Join, Parameter, Ref, Output, GetAtt, \
     Equals, AWS_NO_VALUE, If, route53, FindInMap, AWS_REGION
 import custom_resources.acm
+import custom_resources.cloudformation
 
 template = Template()
 
 custom_resources.use_custom_resources_stack_name_parameter(template)
-
-vrt_tags = add_tags(template)
 
 authorizer_stack = template.add_parameter(Parameter(
     "AuthorizerStack",
@@ -52,11 +50,13 @@ param_use_cert = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(param_use_cert, "Use TLS certificate")
 
+cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
+
 acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCertificate(
     "AcmCert",
     Region='us-east-1',  # Api gateway is in us-east-1
     DomainName=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
-    Tags=Tags(**vrt_tags),
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 template.add_output(Output(
     "AcmCertDnsRecords",
@@ -144,7 +144,7 @@ example_distribution = template.add_resource(cloudfront.Distribution(
             CloudFrontDefaultCertificate=If(use_cert_cond, Ref(AWS_NO_VALUE), True),
         ),
     ),
-    Tags=Tags(**vrt_tags),
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 
 hosted_zone_map = "HostedZoneMap"

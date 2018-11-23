@@ -3,19 +3,18 @@ Authorizer stack.
 """
 from central_helpers import write_template_to_file, \
     kms as kms_helpers, resource2var, mappings
-from central_helpers.vrt import add_tags
 
-from troposphere import Template, Parameter, Ref, Sub, Tags, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
+from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
     Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3
 import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
+import custom_resources.cloudformation
+
 
 template = Template()
 
 custom_resources.use_custom_resources_stack_name_parameter(template)
-
-vrt_tags = add_tags(template)
 
 template.add_transform('AWS::Serverless-2016-10-31')
 
@@ -70,10 +69,12 @@ template.set_parameter_label(adfs_metadata_url, "ADFS Metadata Url")
 
 magic_path = '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220'
 
+cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
+
 cognito_user_pool = template.add_resource(cognito.UserPool(
     "CognitoUserPool",
     UserPoolName=Sub("StagingAccess${AWS::StackName}"),
-    UserPoolTags=vrt_tags,
+    UserPoolTags=GetAtt(cloudformation_tags, 'TagDict'),
 ))
 
 cognito_user_pool_domain = template.add_resource(custom_resources.cognito.UserPoolDomain(
@@ -89,7 +90,6 @@ adfs_identity_provider = template.add_resource(custom_resources.cognito.UserPool
     ProviderName=adfs_provider_name,
     ProviderType='SAML',
     ProviderDetails={
-        # Todo: use mapping / parameter
         'MetadataURL': Ref(adfs_metadata_url),
     },
     AttributeMapping={
@@ -101,7 +101,11 @@ adfs_identity_provider = template.add_resource(custom_resources.cognito.UserPool
 template.add_output(Output(
     'SamlUrl',
     Value=Join('', [
-        "https://", GetAtt(cognito_user_pool_domain, 'Domain'), ".auth.", Ref(AWS_REGION), ".amazoncognito.com/saml2/idpresponse"
+        "https://",
+        GetAtt(cognito_user_pool_domain, 'Domain'),
+        ".auth.",
+        Ref(AWS_REGION),
+        ".amazoncognito.com/saml2/idpresponse"
     ]),
     Description='redirect or sign-in URL',
 ))
@@ -247,7 +251,7 @@ auth_key = template.add_resource(kms.Key(
             },
         ],
     },
-    Tags=Tags(**vrt_tags),
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 
 auth_key_alias = template.add_resource(kms.Alias(
@@ -263,7 +267,7 @@ jwt_secret_parameter = template.add_resource(custom_resources.ssm.Parameter(
     Type="SecureString",
     KeyId=Ref(auth_key),
     RandomValue={"Serial": '1'},  # Change this to force a new random value
-    Tags=Tags(**vrt_tags),
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 
 template.add_resource(iam.PolicyType(
@@ -305,7 +309,6 @@ common_lambda_options = {
         }
     ),
     'Role': GetAtt(lambda_role, 'Arn'),
-    'Tags': vrt_tags,
 }
 
 template.add_resource(serverless.Function(
@@ -368,7 +371,6 @@ template.add_resource(serverless.Function(
         'VerifyAccess': serverless.ApiEvent(
             'unused',
             Path='/verify_access',
-            # WARNING: this name is hard-coded in index.js
             Method='GET',
         ),
         'VerifyAccessUuid': serverless.ApiEvent(
@@ -415,7 +417,7 @@ acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCertificate(
     "AcmCert",
     Region='us-east-1',  # Api gateway is in us-east-1
     DomainName=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
-    Tags=Tags(**vrt_tags),
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 template.add_output(Output(
     "AcmCertDnsRecords",
