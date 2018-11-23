@@ -3,7 +3,8 @@ Authorizer stack.
 """
 from central_helpers import write_template_to_file, \
     kms as kms_helpers, resource2var, mappings
-from central_helpers.vrt import add_tags, StackLinker
+from central_helpers.vrt import add_tags
+
 from troposphere import Template, Parameter, Ref, Sub, Tags, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
     Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3
 import custom_resources.ssm
@@ -13,8 +14,6 @@ import custom_resources.cognito
 template = Template()
 
 custom_resources.use_custom_resources_stack_name_parameter(template)
-
-stack_linker = StackLinker(template)
 
 vrt_tags = add_tags(template)
 
@@ -36,11 +35,19 @@ param_s3_key = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(param_s3_key, "Lambda S3 key")
 
-param_domain_name = template.add_parameter(Parameter(
-    "DomainName",
-    Default="authorizer.example.org",
+param_label = template.add_parameter(Parameter(
+    "Label",
+    Default="authorizer",
     Type=constants.STRING,
-    Description="Domain name to use",
+    Description="Label inside the Hosted Zone to create. e.g. 'authorizer' for 'authorizer.example.org'",
+))
+template.set_parameter_label(param_label, "Label")
+
+param_hosted_zone_name = template.add_parameter(Parameter(
+    "HostedZone",
+    Default="example.org",
+    Type=constants.STRING,
+    Description="Name of the Hosted DNS zone (without trailing dot). e.g. 'example.org' for 'authorizer.example.org'",
 ))
 template.set_parameter_label(param_hosted_zone_name, "Hosted Zone Name")
 
@@ -110,7 +117,7 @@ cognito_user_pool_client = template.add_resource(custom_resources.cognito.UserPo
     CallbackURLs=[
         Join('', [
             'https://',
-            Ref(param_domain_name),
+            Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
             '/',
         ]),
     ],
@@ -292,7 +299,7 @@ common_lambda_options = {
             "COGNITO_CLIENT_ID": Ref(cognito_user_pool_client),
             "COGNITO_CLIENT_SECRET": GetAtt(cognito_user_pool_client, 'ClientSecret'),
             "JWT_SECRET_PARAMETER_NAME": Ref(jwt_secret_parameter),
-            "DOMAIN_NAME": Ref(param_domain_name),
+            "DOMAIN_NAME": Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
             "MAGIC_PATH": magic_path,
             "CONFIG_BUCKET": Ref(config_bucket),
         }
@@ -393,7 +400,7 @@ template.add_resource(serverless.Function(
 template.add_output(Output(
     "ApiDomain",
     Description='Domain name of the API',
-    Value=Ref(param_domain_name),
+    Value=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
     Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'domain-name'])),
 ))
 
@@ -407,7 +414,7 @@ template.add_output(Output(
 acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCertificate(
     "AcmCert",
     Region='us-east-1',  # Api gateway is in us-east-1
-    DomainName=Ref(param_domain_name),
+    DomainName=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
     Tags=Tags(**vrt_tags),
 ))
 template.add_output(Output(
@@ -421,7 +428,7 @@ template.add_condition(use_cert_cond, Equals(Ref(param_use_cert), 'yes'))
 api_domain = template.add_resource(apigateway.DomainName(
     "ApiDomain",
     CertificateArn=Ref(acm_cert),
-    DomainName=Ref(param_domain_name),
+    DomainName=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
     Condition=use_cert_cond,
 ))
 
@@ -443,9 +450,8 @@ template.add_resource(route53.RecordSetType(
         HostedZoneId=FindInMap(hosted_zone_map, Ref(AWS_REGION), 'CloudFront'),
     ),
     Comment=Sub('Default DNS for ${AWS::StackName} api'),
-    HostedZoneId=stack_linker.hosted_zone_id,
-    Name=Ref(param_domain_name),
-    # WARNING: this name is hard-coded in index.js
+    HostedZoneName=Join('', [Ref(param_hosted_zone_name), '.']),
+    Name=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
     Type='A',
     Condition=use_cert_cond,
 ))
@@ -457,9 +463,8 @@ template.add_resource(route53.RecordSetType(
         HostedZoneId=FindInMap(hosted_zone_map, Ref(AWS_REGION), 'CloudFront'),
     ),
     Comment=Sub('Default DNS for ${AWS::StackName} api'),
-    HostedZoneId=stack_linker.hosted_zone_id,
-    Name=Ref(param_domain_name),
-    # WARNING: this name is hard-coded in index.js
+    HostedZoneName=Join('', [Ref(param_hosted_zone_name), '.']),
+    Name=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
     Type='AAAA',
     Condition=use_cert_cond,
 ))

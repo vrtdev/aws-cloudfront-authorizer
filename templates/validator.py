@@ -2,7 +2,7 @@
 Validator stack.
 """
 from central_helpers import write_template_to_file
-from central_helpers.vrt import add_tags, StackLinker
+from central_helpers.vrt import add_tags
 from troposphere import Template, constants, Parameter, awslambda, Ref, Tags, Output
 
 import custom_resources.awslambda
@@ -10,8 +10,6 @@ import custom_resources.awslambda
 template = Template()
 
 custom_resources.use_custom_resources_stack_name_parameter(template)
-
-stack_linker = StackLinker(template)
 
 vrt_tags = add_tags(template)
 

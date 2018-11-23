@@ -1,8 +1,10 @@
 """
 Authorizer parameter stack.
+
+This stack gathers the information needed to use the Authorizer in one place.
 """
 from central_helpers import write_template_to_file
-from central_helpers.vrt import add_tags, StackLinker
+from central_helpers.vrt import add_tags
 from troposphere import Template, Parameter, Ref, Sub, Tags, Output, Export, Join, AWS_STACK_NAME, constants, \
     ImportValue
 import custom_resources.ssm
@@ -10,8 +12,6 @@ import custom_resources.ssm
 template = Template()
 
 custom_resources.use_custom_resources_stack_name_parameter(template)
-
-stack_linker = StackLinker(template)
 
 vrt_tags = add_tags(template)
 
