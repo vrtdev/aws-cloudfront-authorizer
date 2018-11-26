@@ -2,7 +2,7 @@
 Authorizer stack.
 """
 from central_helpers import write_template_to_file, \
-    kms as kms_helpers, resource2var
+    kms as kms_helpers
 
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
     Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3
@@ -112,7 +112,7 @@ template.add_output(Output(
 ))
 template.add_output(Output(
     "Urn",
-    Value=Sub("urn:amazon:cognito:sp:{id}".format(id=resource2var(cognito_user_pool))),
+    Value=Sub("urn:amazon:cognito:sp:${{{id}}}".format(id=cognito_user_pool.title)),
 ))
 
 cognito_user_pool_client = template.add_resource(custom_resources.cognito.UserPoolClient(
@@ -285,8 +285,8 @@ template.add_resource(iam.PolicyType(
             "Effect": "Allow",
             "Resource": [
                 Sub(
-                    "arn:aws:ssm:${{AWS::Region}}:${{AWS::AccountId}}:parameter{param}".format(
-                        param=resource2var(p)
+                    "arn:aws:ssm:${{AWS::Region}}:${{AWS::AccountId}}:parameter${{{param}}}".format(
+                        param=p.title
                     ))
                 for p in [jwt_secret_parameter]
             ],
