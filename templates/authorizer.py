@@ -1,8 +1,7 @@
 """
 Authorizer stack.
 """
-from central_helpers import write_template_to_file, \
-    kms as kms_helpers
+from central_helpers import write_template_to_file
 
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
     Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3
@@ -11,6 +10,7 @@ import custom_resources.acm
 import custom_resources.cognito
 import custom_resources.cloudformation
 import cfnutils.mappings
+import cfnutils.kms
 
 
 template = Template()
@@ -220,7 +220,7 @@ auth_key = template.add_resource(kms.Key(
                 "Effect": "Allow",
                 "Principal": {
                     "AWS": Sub("arn:aws:iam::${AWS::AccountId}:root")},
-                "Action": kms_helpers.IAM_RESTRICTED_ACTIONS,
+                "Action": cfnutils.kms.IAM_SAFE_ACTIONS,
                 "Resource": "*",
             },
             # It's not possible to create a key you cannot edit yourself, however we can make sure
@@ -247,7 +247,7 @@ auth_key = template.add_resource(kms.Key(
                 "Sid": "Allow decrypting things",
                 "Effect": "Allow",
                 "Principal": {"AWS": GetAtt(lambda_role, 'Arn')},
-                "Action": kms_helpers.IAM_DECRYPT_ACTIONS,
+                "Action": cfnutils.kms.IAM_DECRYPT_ACTIONS,
                 "Resource": "*",  # The policy is applied to only this key
             },
         ],
