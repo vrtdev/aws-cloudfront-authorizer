@@ -1,11 +1,12 @@
 """
 Validator stack.
 """
-from central_helpers import write_template_to_file
 from troposphere import Template, constants, Parameter, awslambda, Ref, Output, GetAtt
 
 import custom_resources.awslambda
 import custom_resources.cloudformation
+import cfnutils.output
+
 
 template = Template()
 
@@ -73,4 +74,4 @@ template.add_output(Output(
     Value=Ref(validator_version),
 ))
 
-write_template_to_file(template)
+cfnutils.output.write_template_to_file(template)

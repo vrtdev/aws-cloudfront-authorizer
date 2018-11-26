@@ -1,8 +1,6 @@
 """
 Authorizer stack.
 """
-from central_helpers import write_template_to_file
-
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
     Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3
 import custom_resources.ssm
@@ -11,6 +9,7 @@ import custom_resources.cognito
 import custom_resources.cloudformation
 import cfnutils.mappings
 import cfnutils.kms
+import cfnutils.output
 
 
 template = Template()
@@ -472,4 +471,4 @@ template.add_resource(route53.RecordSetType(
     Condition=use_cert_cond,
 ))
 
-write_template_to_file(template)
+cfnutils.output.write_template_to_file(template)

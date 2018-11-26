@@ -1,9 +1,10 @@
-from central_helpers import write_template_to_file
 from troposphere import Template, cloudfront, constants, ImportValue, Sub, Join, Parameter, Ref, Output, GetAtt, \
     Equals, AWS_NO_VALUE, If, route53, FindInMap, AWS_REGION
 import custom_resources.acm
 import custom_resources.cloudformation
 import cfnutils.mappings
+import cfnutils.output
+
 
 template = Template()
 
@@ -23,7 +24,7 @@ param_authorizer_lae_arn = template.add_parameter(Parameter(
     Default='/authorizer/lae-arn',
     Description="Parameter name to get Lambda@Edge ARN from",
 ))
-template.set_parameter_label("Authorizer Lambda@Edge parameter")
+template.set_parameter_label(param_authorizer_lae_arn, "Authorizer Lambda@Edge parameter")
 
 param_label = template.add_parameter(Parameter(
     "Label",
@@ -174,4 +175,4 @@ template.add_resource(route53.RecordSetType(
     Type='AAAA',
 ))
 
-write_template_to_file(template)
+cfnutils.output.write_template_to_file(template)

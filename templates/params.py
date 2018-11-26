@@ -3,11 +3,12 @@ Authorizer parameter stack.
 
 This stack gathers the information needed to use the Authorizer in one place.
 """
-from central_helpers import write_template_to_file
 from troposphere import Template, Parameter, Ref, Sub, Output, Export, Join, AWS_STACK_NAME, constants, \
     ImportValue, GetAtt
 import custom_resources.ssm
 import custom_resources.cloudformation
+import cfnutils.output
+
 
 template = Template()
 
@@ -62,4 +63,4 @@ template.add_output(Output(
 ))
 
 
-write_template_to_file(template)
+cfnutils.output.write_template_to_file(template)
