@@ -129,6 +129,7 @@ cognito_user_pool_client = template.add_resource(custom_resources.cognito.UserPo
     AllowedOAuthScopes=["openid", "email", "profile", "aws.cognito.signin.user.admin"],
     AllowedOAuthFlowsUserPoolClient=True,
     SupportedIdentityProviders=["COGNITO", adfs_provider_name],
+    DependsOn=[adfs_identity_provider.title],  # No automatic dependency
     GenerateSecret=True,
 ))
 
