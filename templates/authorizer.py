@@ -142,6 +142,8 @@ template.add_output(Output(
     Value=Ref(config_bucket),
 ))
 
+# TODO: Output config settings to an object in the above bucket
+
 lambda_role = template.add_resource(iam.Role(
     "LambdaRole",
     Path="/",
