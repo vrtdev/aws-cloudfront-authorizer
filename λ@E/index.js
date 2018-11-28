@@ -154,10 +154,12 @@ class BadToken extends Error {}
 async function validate_cookie(cookies, hostname, config) {
     if(!(config.cookie_name in cookies)) {
         // Cookie not present. Redirect to authz
+        console.log(`Could not find cookie with name "${config.cookie_name}"`);
         throw new NotAuthorized();
     }
 
     const cookie_value = cookies[config.cookie_name];
+    console.log(`Found cookie: ${config.cookie_name}=${cookie_value}`);
 
     let token;
     try {
@@ -204,7 +206,9 @@ exports.handler = async (event, context) => {
     const request = event.Records[0].cf.request;
     const request_headers = request.headers;
     const hostname = request_headers.host[0].value;  // Host:-header is required, should always be present;
+    console.log(`Processing request for Host: ${hostname}`);
     const cookies = normalize_cookies(request_headers);
+    console.log(`Cookies: ${JSON.stringify(cookies)}`);
 
     try {
         await validate_cookie(cookies, hostname, config);
