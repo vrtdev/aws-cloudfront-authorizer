@@ -2,6 +2,8 @@ import base64
 import functools
 import json
 import os
+import sys
+import traceback
 import typing
 from http import cookies
 
@@ -9,9 +11,41 @@ import boto3
 import jwt
 import structlog
 
-AUTH_LOGIN_COOKIE_NAME = 'VRT_authorizer_login'
-AUTH_ACCESS_COOKIE_NAME = 'VRT_authorizer_access'
 DOMAIN_KEY = 'domains.json'
+CONFIG_KEY = 'config.json'
+
+
+class Config:
+    def __init__(self):
+        # default settings
+        self.verify_access_url = 'https://authorizer.example.org/verify_access'
+        self.cookie_name = 'authorizer_access'
+        self.login_cookie_name = 'authorizer_login'
+        self.parameter_store_region = 'eu-west-1'
+        self.parameter_store_parameter_name = '/authorizer/jwt-secret'
+
+    def update(self, settings_dict: dict):
+        for attr in vars(self).keys():
+            if attr in settings_dict:
+                setattr(self, attr, settings_dict[attr])
+
+
+def get_config() -> Config:
+    c = Config()
+    try:
+        bucket = os.environ.get('CONFIG_BUCKET', "<None>")
+        s3_client = boto3.client('s3')
+        response = s3_client.get_object(
+            Bucket=bucket,
+            Key=CONFIG_KEY,
+        )
+        body = response['Body'].read()
+        config = json.loads(body)
+        c.update(config)
+    except Exception as e:
+        print(f"s3.GetObject(Bucket={bucket}, Key={CONFIG_KEY}) failed, continuing with defaults:")
+        traceback.print_exception(type(e), e, e.__traceback__, file=sys.stdout)
+    return c
 
 
 @functools.lru_cache(maxsize=1)
@@ -90,7 +124,7 @@ def validate_login_cookie(event: dict) -> dict:
 
     try:
         request_cookies = cookies.BaseCookie(headers['cookie'][0])
-        login_token = request_cookies[AUTH_LOGIN_COOKIE_NAME].value
+        login_token = request_cookies[get_config().login_cookie_name].value
 
         token = jwt.decode(  # may raise
             login_token,
@@ -143,11 +177,14 @@ def url_origin(url: str) -> str:
 
 
 def get_domains():
-    s3_client = boto3.client('s3')
-    response = s3_client.get_object(
-        Bucket=os.environ['CONFIG_BUCKET'],
-        Key=DOMAIN_KEY,
-    )
-    body = response['Body'].read()
-    domains = json.loads(body)
+    try:
+        s3_client = boto3.client('s3')
+        response = s3_client.get_object(
+            Bucket=os.environ['CONFIG_BUCKET'],
+            Key=DOMAIN_KEY,
+        )
+        body = response['Body'].read()
+        domains = json.loads(body)
+    except Exception:
+        domains = []
     return domains

@@ -19,9 +19,8 @@ import requests.auth
 import structlog
 
 from cognito_utils import validate_cognito_id_token
-from utils import AUTH_LOGIN_COOKIE_NAME, get_jwt_secret, validate_login_cookie, NotLoggedInError, generate_cookie, \
-    main_url
-
+from utils import get_jwt_secret, validate_login_cookie, NotLoggedInError, generate_cookie, \
+    main_url, get_config
 
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
 
@@ -186,7 +185,7 @@ def handler(event, context):
 
             structlog.get_logger().msg("Cognito Code exchanged succesfully, issuing JWT", jwt=jwt_content)
             return index_page({
-                'Set-Cookie': generate_cookie(AUTH_LOGIN_COOKIE_NAME, vrt_auth_token),
+                'Set-Cookie': generate_cookie(get_config().login_cookie_name, vrt_auth_token),
             })
         except InternalServerError as e:
             structlog.get_logger().msg("Could not validate Cognito code", exception=e)

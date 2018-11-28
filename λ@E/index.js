@@ -52,6 +52,13 @@ function asyncS3GetObject(param) {
 }
 
 async function get_config_(context) {
+    let config = {  // Default settings
+        'verify_access_url': 'https://authorizer.example.org/verify_access',
+        'cookie_name': 'authorizer_access',
+        'login_cookie_name': 'authorizer_login',
+        'parameter_store_region': 'eu-west-1',
+        'parameter_store_parameter_name': '/authorizer/jwt-secret',
+    };
     const config_bucket = await get_config_bucket(context);
     try {
         const config_response = await asyncS3GetObject({
@@ -61,17 +68,17 @@ async function get_config_(context) {
         const body = config_response.Body.toString('utf-8');
         console.log("Retrieved config from S3:");
         console.log(body);
-        return JSON.parse(body);
+        const parsed_body = JSON.parse(body);
+        for(let key in config) {
+            if(key in parsed_body) {
+                config[key] = parsed_body[key];
+            }
+        }
     } catch(e) {
         console.log("Could not retrieve config from S3. Using defaults.");
         console.log(e);
-        return {  // Default settings
-            'verify_access_url': 'https://authorizer.example.org/verify_access',
-            'cookie_name': 'authorizer_access',
-            'parameter_store_region': 'eu-west-1',
-            'parameter_store_parameter_name': '/authorizer/jwt-secret',
-        }
     }
+    return config;
 }
 
 function get_config_promise(context) {
