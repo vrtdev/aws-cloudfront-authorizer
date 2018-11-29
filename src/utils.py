@@ -185,6 +185,11 @@ def get_domains():
         )
         body = response['Body'].read()
         domains = json.loads(body)
-    except Exception:
-        domains = []
+    except Exception as e:
+        structlog.get_logger().msg("S3.GetObject() failed, rendering default domain list", exception=e)
+        domains = [
+            "stag.example.org",
+            "images-stag.example.org",
+            f"<put a JSON array at s3://{os.environ['CONFIG_BUCKET']}/{DOMAIN_KEY} to change this list>"
+        ]
     return domains
