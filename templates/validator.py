@@ -1,20 +1,16 @@
 """
 Validator stack.
 """
-from central_helpers import MetadataHelper, write_template_to_file
-from central_helpers.vrt import add_tags, StackLinker
-from troposphere import Template, constants, Parameter, awslambda, Ref, Tags, Output
+from troposphere import Template, constants, Parameter, awslambda, Ref, Output, GetAtt
 
 import custom_resources.awslambda
+import custom_resources.cloudformation
+import cfnutils.output
+
 
 template = Template()
 
 custom_resources.use_custom_resources_stack_name_parameter(template)
-
-stack_linker = StackLinker(template)
-
-template_helper = MetadataHelper(template)
-vrt_tags = add_tags(template)
 
 param_role = template.add_parameter(Parameter(
     "Role",
@@ -22,7 +18,7 @@ param_role = template.add_parameter(Parameter(
     Type=constants.STRING,
     Description="ARN of role to run as",
 ))
-template_helper.add_parameter_label(param_role, "Lambda role ARN")
+template.set_parameter_label(param_role, "Lambda role ARN")
 
 param_s3_bucket_name = template.add_parameter(Parameter(
     "S3BucketName",
@@ -30,7 +26,7 @@ param_s3_bucket_name = template.add_parameter(Parameter(
     Type=constants.STRING,
     Description="Location of the Lambda ZIP file, bucket name",
 ))
-template_helper.add_parameter_label(param_s3_bucket_name, "Lambda S3 bucket")
+template.set_parameter_label(param_s3_bucket_name, "Lambda S3 bucket")
 
 param_s3_key = template.add_parameter(Parameter(
     "S3Key",
@@ -38,7 +34,7 @@ param_s3_key = template.add_parameter(Parameter(
     Type=constants.STRING,
     Description="Location of the Lambda ZIP file, path",
 ))
-template_helper.add_parameter_label(param_s3_key, "Lambda S3 key")
+template.set_parameter_label(param_s3_key, "Lambda S3 key")
 
 param_config_bucket = template.add_parameter(Parameter(
     "ConfigBucket",
@@ -46,7 +42,14 @@ param_config_bucket = template.add_parameter(Parameter(
     Type=constants.STRING,
     Description="Name of the configuration bucket",
 ))
-template_helper.add_parameter_label(param_config_bucket, "Lambda Config S3 bucket")
+template.set_parameter_label(param_config_bucket, "Lambda Config S3 bucket")
+
+cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags(
+    "CfnTags",
+    Set={
+        'ConfigBucket': Ref(param_config_bucket),
+    },
+))
 
 validator_lambda = template.add_resource(awslambda.Function(
     "ValidatorLambda",
@@ -57,7 +60,7 @@ validator_lambda = template.add_resource(awslambda.Function(
     Runtime='nodejs8.10',
     Handler='index.handler',
     Role=Ref(param_role),
-    Tags=Tags(ConfigBucket=Ref(param_config_bucket), **vrt_tags),
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 
 validator_version = template.add_resource(custom_resources.awslambda.Version(
@@ -71,4 +74,4 @@ template.add_output(Output(
     Value=Ref(validator_version),
 ))
 
-write_template_to_file(template)
+cfnutils.output.write_template_to_file(template)

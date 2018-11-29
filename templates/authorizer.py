@@ -1,23 +1,20 @@
 """
 Authorizer stack.
 """
-from central_helpers import MetadataHelper, write_template_to_file, \
-    kms as kms_helpers, resource2var, mappings
-from central_helpers.vrt import add_tags, StackLinker
-from troposphere import Template, Parameter, Ref, Sub, Tags, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
+from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
     Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3
 import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
+import custom_resources.cloudformation
+import cfnutils.mappings
+import cfnutils.kms
+import cfnutils.output
+
 
 template = Template()
 
 custom_resources.use_custom_resources_stack_name_parameter(template)
-
-stack_linker = StackLinker(template)
-
-template_helper = MetadataHelper(template)
-vrt_tags = add_tags(template)
 
 template.add_transform('AWS::Serverless-2016-10-31')
 
@@ -27,7 +24,7 @@ param_s3_bucket_name = template.add_parameter(Parameter(
     Type=constants.STRING,
     Description="Location of the Lambda ZIP file, bucket name",
 ))
-template_helper.add_parameter_label(param_s3_bucket_name, "Lambda S3 bucket")
+template.set_parameter_label(param_s3_bucket_name, "Lambda S3 bucket")
 
 param_s3_key = template.add_parameter(Parameter(
     "S3Key",
@@ -35,15 +32,23 @@ param_s3_key = template.add_parameter(Parameter(
     Type=constants.STRING,
     Description="Location of the Lambda ZIP file, path",
 ))
-template_helper.add_parameter_label(param_s3_key, "Lambda S3 key")
+template.set_parameter_label(param_s3_key, "Lambda S3 key")
 
-param_domain_name = template.add_parameter(Parameter(
-    "DomainName",
-    Default="authorizer.example.org",
+param_label = template.add_parameter(Parameter(
+    "Label",
+    Default="authorizer",
     Type=constants.STRING,
-    Description="Domain name to use",
+    Description="Label inside the Hosted Zone to create. e.g. 'authorizer' for 'authorizer.example.org'",
 ))
-template_helper.add_parameter_label(param_domain_name, "Domain name")
+template.set_parameter_label(param_label, "Label")
+
+param_hosted_zone_name = template.add_parameter(Parameter(
+    "HostedZone",
+    Default="example.org",
+    Type=constants.STRING,
+    Description="Name of the Hosted DNS zone (without trailing dot). e.g. 'example.org' for 'authorizer.example.org'",
+))
+template.set_parameter_label(param_hosted_zone_name, "Hosted Zone Name")
 
 param_use_cert = template.add_parameter(Parameter(
     "UseCert",
@@ -53,21 +58,23 @@ param_use_cert = template.add_parameter(Parameter(
     # This avoids stacks failing since the cert is not approved yet
     Description="Use TLS certificate"
 ))
-template_helper.add_parameter_label(param_use_cert, "Use TLS certificate")
+template.set_parameter_label(param_use_cert, "Use TLS certificate")
 
 adfs_metadata_url = template.add_parameter(Parameter(
     "AdfsMetadataUrl",
     Type=constants.STRING,
     Default='https://adfs.example.com/FederationMetadata/2007-06/FederationMetadata.xml',
 ))
-template_helper.add_parameter_label(adfs_metadata_url, "ADFS Metadata Url")
+template.set_parameter_label(adfs_metadata_url, "ADFS Metadata Url")
 
 magic_path = '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220'
+
+cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
 
 cognito_user_pool = template.add_resource(cognito.UserPool(
     "CognitoUserPool",
     UserPoolName=Sub("StagingAccess${AWS::StackName}"),
-    UserPoolTags=vrt_tags,
+    UserPoolTags=GetAtt(cloudformation_tags, 'TagDict'),
 ))
 
 cognito_user_pool_domain = template.add_resource(custom_resources.cognito.UserPoolDomain(
@@ -83,7 +90,6 @@ adfs_identity_provider = template.add_resource(custom_resources.cognito.UserPool
     ProviderName=adfs_provider_name,
     ProviderType='SAML',
     ProviderDetails={
-        # Todo: use mapping / parameter
         'MetadataURL': Ref(adfs_metadata_url),
     },
     AttributeMapping={
@@ -95,13 +101,17 @@ adfs_identity_provider = template.add_resource(custom_resources.cognito.UserPool
 template.add_output(Output(
     'SamlUrl',
     Value=Join('', [
-        "https://", GetAtt(cognito_user_pool_domain, 'Domain'), ".auth.", Ref(AWS_REGION), ".amazoncognito.com/saml2/idpresponse"
+        "https://",
+        GetAtt(cognito_user_pool_domain, 'Domain'),
+        ".auth.",
+        Ref(AWS_REGION),
+        ".amazoncognito.com/saml2/idpresponse"
     ]),
     Description='redirect or sign-in URL',
 ))
 template.add_output(Output(
     "Urn",
-    Value=Sub("urn:amazon:cognito:sp:{id}".format(id=resource2var(cognito_user_pool))),
+    Value=Sub("urn:amazon:cognito:sp:${{{id}}}".format(id=cognito_user_pool.title)),
 ))
 
 cognito_user_pool_client = template.add_resource(custom_resources.cognito.UserPoolClient(
@@ -111,7 +121,7 @@ cognito_user_pool_client = template.add_resource(custom_resources.cognito.UserPo
     CallbackURLs=[
         Join('', [
             'https://',
-            Ref(param_domain_name),
+            Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
             '/',
         ]),
     ],
@@ -119,6 +129,7 @@ cognito_user_pool_client = template.add_resource(custom_resources.cognito.UserPo
     AllowedOAuthScopes=["openid", "email", "profile", "aws.cognito.signin.user.admin"],
     AllowedOAuthFlowsUserPoolClient=True,
     SupportedIdentityProviders=["COGNITO", adfs_provider_name],
+    DependsOn=[adfs_identity_provider.title],  # No automatic dependency
     GenerateSecret=True,
 ))
 
@@ -130,6 +141,8 @@ template.add_output(Output(
     Description='Config bucket name',
     Value=Ref(config_bucket),
 ))
+
+# TODO: Output config settings to an object in the above bucket
 
 lambda_role = template.add_resource(iam.Role(
     "LambdaRole",
@@ -209,7 +222,7 @@ auth_key = template.add_resource(kms.Key(
                 "Effect": "Allow",
                 "Principal": {
                     "AWS": Sub("arn:aws:iam::${AWS::AccountId}:root")},
-                "Action": kms_helpers.IAM_RESTRICTED_ACTIONS,
+                "Action": cfnutils.kms.IAM_SAFE_ACTIONS,
                 "Resource": "*",
             },
             # It's not possible to create a key you cannot edit yourself, however we can make sure
@@ -236,12 +249,12 @@ auth_key = template.add_resource(kms.Key(
                 "Sid": "Allow decrypting things",
                 "Effect": "Allow",
                 "Principal": {"AWS": GetAtt(lambda_role, 'Arn')},
-                "Action": kms_helpers.IAM_DECRYPT_ACTIONS,
+                "Action": cfnutils.kms.IAM_DECRYPT_ACTIONS,
                 "Resource": "*",  # The policy is applied to only this key
             },
         ],
     },
-    Tags=Tags(**vrt_tags),
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 
 auth_key_alias = template.add_resource(kms.Alias(
@@ -257,7 +270,7 @@ jwt_secret_parameter = template.add_resource(custom_resources.ssm.Parameter(
     Type="SecureString",
     KeyId=Ref(auth_key),
     RandomValue={"Serial": '1'},  # Change this to force a new random value
-    Tags=Tags(**vrt_tags),
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 
 template.add_resource(iam.PolicyType(
@@ -274,8 +287,8 @@ template.add_resource(iam.PolicyType(
             "Effect": "Allow",
             "Resource": [
                 Sub(
-                    "arn:aws:ssm:${{AWS::Region}}:${{AWS::AccountId}}:parameter{param}".format(
-                        param=resource2var(p)
+                    "arn:aws:ssm:${{AWS::Region}}:${{AWS::AccountId}}:parameter${{{param}}}".format(
+                        param=p.title
                     ))
                 for p in [jwt_secret_parameter]
             ],
@@ -293,13 +306,12 @@ common_lambda_options = {
             "COGNITO_CLIENT_ID": Ref(cognito_user_pool_client),
             "COGNITO_CLIENT_SECRET": GetAtt(cognito_user_pool_client, 'ClientSecret'),
             "JWT_SECRET_PARAMETER_NAME": Ref(jwt_secret_parameter),
-            "DOMAIN_NAME": Ref(param_domain_name),
+            "DOMAIN_NAME": Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
             "MAGIC_PATH": magic_path,
             "CONFIG_BUCKET": Ref(config_bucket),
         }
     ),
     'Role': GetAtt(lambda_role, 'Arn'),
-    'Tags': vrt_tags,
 }
 
 template.add_resource(serverless.Function(
@@ -362,7 +374,6 @@ template.add_resource(serverless.Function(
         'VerifyAccess': serverless.ApiEvent(
             'unused',
             Path='/verify_access',
-            # WARNING: this name is hard-coded in index.js
             Method='GET',
         ),
         'VerifyAccessUuid': serverless.ApiEvent(
@@ -394,7 +405,7 @@ template.add_resource(serverless.Function(
 template.add_output(Output(
     "ApiDomain",
     Description='Domain name of the API',
-    Value=Ref(param_domain_name),
+    Value=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
     Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'domain-name'])),
 ))
 
@@ -408,8 +419,8 @@ template.add_output(Output(
 acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCertificate(
     "AcmCert",
     Region='us-east-1',  # Api gateway is in us-east-1
-    DomainName=Ref(param_domain_name),
-    Tags=Tags(**vrt_tags),
+    DomainName=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 template.add_output(Output(
     "AcmCertDnsRecords",
@@ -422,7 +433,7 @@ template.add_condition(use_cert_cond, Equals(Ref(param_use_cert), 'yes'))
 api_domain = template.add_resource(apigateway.DomainName(
     "ApiDomain",
     CertificateArn=Ref(acm_cert),
-    DomainName=Ref(param_domain_name),
+    DomainName=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
     Condition=use_cert_cond,
 ))
 
@@ -435,7 +446,7 @@ api_domain_mapping = template.add_resource(apigateway.BasePathMapping(
 ))
 
 hosted_zone_map = "HostedZoneMap"
-template.add_mapping(hosted_zone_map, mappings.hosted_zone_map())
+template.add_mapping(hosted_zone_map, cfnutils.mappings.r53_hosted_zone_id())
 
 template.add_resource(route53.RecordSetType(
     "DomainA",
@@ -444,9 +455,8 @@ template.add_resource(route53.RecordSetType(
         HostedZoneId=FindInMap(hosted_zone_map, Ref(AWS_REGION), 'CloudFront'),
     ),
     Comment=Sub('Default DNS for ${AWS::StackName} api'),
-    HostedZoneId=stack_linker.hosted_zone_id,
-    Name=Ref(param_domain_name),
-    # WARNING: this name is hard-coded in index.js
+    HostedZoneName=Join('', [Ref(param_hosted_zone_name), '.']),
+    Name=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
     Type='A',
     Condition=use_cert_cond,
 ))
@@ -458,11 +468,10 @@ template.add_resource(route53.RecordSetType(
         HostedZoneId=FindInMap(hosted_zone_map, Ref(AWS_REGION), 'CloudFront'),
     ),
     Comment=Sub('Default DNS for ${AWS::StackName} api'),
-    HostedZoneId=stack_linker.hosted_zone_id,
-    Name=Ref(param_domain_name),
-    # WARNING: this name is hard-coded in index.js
+    HostedZoneName=Join('', [Ref(param_hosted_zone_name), '.']),
+    Name=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
     Type='AAAA',
     Condition=use_cert_cond,
 ))
 
-write_template_to_file(template)
+cfnutils.output.write_template_to_file(template)

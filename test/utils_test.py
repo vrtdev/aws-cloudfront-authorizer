@@ -42,11 +42,12 @@ def test_canon_header():
 def test_validate_cookie():
     with mock.patch('src.utils.get_jwt_secret', return_value='foobar') as jwt_sec:
         token_in = {'foo': 'bar'}
+        cookie_name = utils.get_config().login_cookie_name
         cookie = jwt.encode(token_in, jwt_sec.return_value, 'HS256').decode('ascii')
 
         token_out = utils.validate_login_cookie({
             'headers': {
-                'Cookie': f'{utils.AUTH_LOGIN_COOKIE_NAME}={cookie}'
+                'Cookie': f'{cookie_name}={cookie}'
             }
         })
         assert token_in == token_out

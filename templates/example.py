@@ -1,17 +1,14 @@
-from central_helpers import MetadataHelper, write_template_to_file, mappings
-from central_helpers.vrt import add_tags, StackLinker
-from troposphere import Template, Tags, cloudfront, constants, ImportValue, Sub, Join, Parameter, Ref, Output, GetAtt, \
+from troposphere import Template, cloudfront, constants, ImportValue, Sub, Join, Parameter, Ref, Output, GetAtt, \
     Equals, AWS_NO_VALUE, If, route53, FindInMap, AWS_REGION
 import custom_resources.acm
+import custom_resources.cloudformation
+import cfnutils.mappings
+import cfnutils.output
+
 
 template = Template()
 
 custom_resources.use_custom_resources_stack_name_parameter(template)
-
-stack_linker = StackLinker(template)
-
-template_helper = MetadataHelper(template)
-vrt_tags = add_tags(template)
 
 authorizer_stack = template.add_parameter(Parameter(
     "AuthorizerStack",
@@ -19,6 +16,7 @@ authorizer_stack = template.add_parameter(Parameter(
     Default="authorizer",
     Description="Authorizer stack to import from",
 ))
+template.set_parameter_label(authorizer_stack, "Authorizer stack")
 
 param_authorizer_lae_arn = template.add_parameter(Parameter(
     "AuthorizerLaeParam",
@@ -26,14 +24,23 @@ param_authorizer_lae_arn = template.add_parameter(Parameter(
     Default='/authorizer/lae-arn',
     Description="Parameter name to get Lambda@Edge ARN from",
 ))
+template.set_parameter_label(param_authorizer_lae_arn, "Authorizer Lambda@Edge parameter")
 
-param_domain_name = template.add_parameter(Parameter(
-    "DomainName",
-    Default="example.authorizer.example.org",
+param_label = template.add_parameter(Parameter(
+    "Label",
+    Default="example.authorizer",
     Type=constants.STRING,
-    Description="Domain name to use",
+    Description="Label inside the Hosted Zone to create. e.g. 'authorizer' for 'authorizer.example.org'",
 ))
-template_helper.add_parameter_label(param_domain_name, "Domain name")
+template.set_parameter_label(param_label, "Label")
+
+param_hosted_zone_name = template.add_parameter(Parameter(
+    "HostedZone",
+    Default="example.org",
+    Type=constants.STRING,
+    Description="Name of the Hosted DNS zone (without trailing dot). e.g. 'example.org' for 'authorizer.example.org'",
+))
+template.set_parameter_label(param_hosted_zone_name, "Hosted Zone Name")
 
 param_use_cert = template.add_parameter(Parameter(
     "UseCert",
@@ -43,13 +50,15 @@ param_use_cert = template.add_parameter(Parameter(
     # This avoids stacks failing since the cert is not approved yet
     Description="Use TLS certificate"
 ))
-template_helper.add_parameter_label(param_use_cert, "Use TLS certificate")
+template.set_parameter_label(param_use_cert, "Use TLS certificate")
+
+cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
 
 acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCertificate(
     "AcmCert",
     Region='us-east-1',  # Api gateway is in us-east-1
-    DomainName=Ref(param_domain_name),
-    Tags=Tags(**vrt_tags),
+    DomainName=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 template.add_output(Output(
     "AcmCertDnsRecords",
@@ -63,7 +72,7 @@ example_distribution = template.add_resource(cloudfront.Distribution(
     "ExampleDistribution",
     DistributionConfig=cloudfront.DistributionConfig(
         Comment="Example distribution for restricted access",
-        Aliases=[Ref(param_domain_name)],
+        Aliases=[Join('.', [Ref(param_label), Ref(param_hosted_zone_name)])],
         Enabled=True,
         IPV6Enabled=True,
         HttpVersion='http2',
@@ -137,11 +146,11 @@ example_distribution = template.add_resource(cloudfront.Distribution(
             CloudFrontDefaultCertificate=If(use_cert_cond, Ref(AWS_NO_VALUE), True),
         ),
     ),
-    Tags=Tags(**vrt_tags),
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 
 hosted_zone_map = "HostedZoneMap"
-template.add_mapping(hosted_zone_map, mappings.hosted_zone_map())
+template.add_mapping(hosted_zone_map, cfnutils.mappings.r53_hosted_zone_id())
 
 template.add_resource(route53.RecordSetType(
     "DomainA",
@@ -150,8 +159,8 @@ template.add_resource(route53.RecordSetType(
         HostedZoneId=FindInMap(hosted_zone_map, Ref(AWS_REGION), 'CloudFront'),
     ),
     Comment=Sub('DNS for ${AWS::StackName}'),
-    HostedZoneId=stack_linker.hosted_zone_id,
-    Name=Ref(param_domain_name),
+    HostedZoneName=Join('', [Ref(param_hosted_zone_name), '.']),
+    Name=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
     Type='A',
 ))
 template.add_resource(route53.RecordSetType(
@@ -161,9 +170,9 @@ template.add_resource(route53.RecordSetType(
         HostedZoneId=FindInMap(hosted_zone_map, Ref(AWS_REGION), 'CloudFront'),
     ),
     Comment=Sub('DNS for ${AWS::StackName}'),
-    HostedZoneId=stack_linker.hosted_zone_id,
-    Name=Ref(param_domain_name),
+    HostedZoneName=Join('', [Ref(param_hosted_zone_name), '.']),
+    Name=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
     Type='AAAA',
 ))
 
-write_template_to_file(template)
+cfnutils.output.write_template_to_file(template)
