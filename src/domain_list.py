@@ -23,15 +23,7 @@ def handler(event, context):
     try:
         validate_login_cookie(event)  # may raise
 
-        try:
-            domains = get_domains()
-        except botocore.exceptions.ClientError as e:
-            structlog.get_logger().msg("get_domains() failed, rendering default domain list", exception=e)
-            domains = [
-                "stag.example.org",
-                "images-stag.example.org",
-                f"<put a JSON array at s3://{os.environ['CONFIG_BUCKET']}/{DOMAIN_KEY} to change this list>"
-            ]
+        domains = get_domains()
 
         return {
             'statusCode': 200,

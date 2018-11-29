@@ -30,6 +30,7 @@ class Config:
                 setattr(self, attr, settings_dict[attr])
 
 
+@functools.lru_cache(maxsize=1)
 def get_config() -> Config:
     c = Config()
     try:
@@ -52,8 +53,9 @@ def get_config() -> Config:
 def get_jwt_secret() -> str:
     # Don't do this at the module level
     # That would make running tests with Mocked SSM much harder
-    _jwt_secret = boto3.client('ssm').get_parameter(
-        Name=os.environ['JWT_SECRET_PARAMETER_NAME'],
+    boto_client = boto3.client('ssm', region_name=get_config().parameter_store_region)
+    _jwt_secret = boto_client.get_parameter(
+        Name=get_config().parameter_store_parameter_name,
         WithDecryption=True,
     )
     return _jwt_secret['Parameter']['Value']
@@ -185,6 +187,11 @@ def get_domains():
         )
         body = response['Body'].read()
         domains = json.loads(body)
-    except Exception:
-        domains = []
+    except Exception as e:
+        structlog.get_logger().msg("S3.GetObject() failed, rendering default domain list", exception=e)
+        domains = [
+            "stag.example.org",
+            "images-stag.example.org",
+            f"<put a JSON array at s3://{os.environ['CONFIG_BUCKET']}/{DOMAIN_KEY} to change this list>"
+        ]
     return domains

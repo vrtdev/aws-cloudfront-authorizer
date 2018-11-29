@@ -7,6 +7,7 @@ import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
 import custom_resources.cloudformation
+import custom_resources.s3
 import cfnutils.mappings
 import cfnutils.kms
 import cfnutils.output
@@ -141,8 +142,6 @@ template.add_output(Output(
     Description='Config bucket name',
     Value=Ref(config_bucket),
 ))
-
-# TODO: Output config settings to an object in the above bucket
 
 lambda_role = template.add_resource(iam.Role(
     "LambdaRole",
@@ -305,7 +304,6 @@ common_lambda_options = {
             "COGNITO_DOMAIN_PREFIX": GetAtt(cognito_user_pool_domain, 'Domain'),
             "COGNITO_CLIENT_ID": Ref(cognito_user_pool_client),
             "COGNITO_CLIENT_SECRET": GetAtt(cognito_user_pool_client, 'ClientSecret'),
-            "JWT_SECRET_PARAMETER_NAME": Ref(jwt_secret_parameter),
             "DOMAIN_NAME": Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
             "MAGIC_PATH": magic_path,
             "CONFIG_BUCKET": Ref(config_bucket),
@@ -366,6 +364,7 @@ template.add_resource(serverless.Function(
     },
 ))
 
+verify_access_path = '/verify_access'
 template.add_resource(serverless.Function(
     "VerifyAccess",
     **common_lambda_options,
@@ -373,12 +372,12 @@ template.add_resource(serverless.Function(
     Events={
         'VerifyAccess': serverless.ApiEvent(
             'unused',
-            Path='/verify_access',
+            Path=verify_access_path,
             Method='GET',
         ),
         'VerifyAccessUuid': serverless.ApiEvent(
             'unused',
-            Path=magic_path + '/verify_access',
+            Path=magic_path + verify_access_path,
             Method='GET',
         ),
     },
@@ -472,6 +471,23 @@ template.add_resource(route53.RecordSetType(
     Name=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
     Type='AAAA',
     Condition=use_cert_cond,
+))
+
+config_object = template.add_resource(custom_resources.s3.Object(
+    "ConfigFile",
+    Bucket=Ref(config_bucket),
+    Key="config.json",
+    Body={  # Default settings
+        'verify_access_url': Join('', [
+            'https://',
+            Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
+            verify_access_path,
+        ]),
+        'parameter_store_region': Ref(AWS_REGION),
+        'parameter_store_parameter_name': jwt_secret_parameter.properties['Name'],
+        'cookie_name': 'authorizer_access',
+        'login_cookie_name': 'authorizer_login',
+    },
 ))
 
 cfnutils.output.write_template_to_file(template)
