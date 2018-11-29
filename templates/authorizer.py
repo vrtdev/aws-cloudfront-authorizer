@@ -304,7 +304,6 @@ common_lambda_options = {
             "COGNITO_DOMAIN_PREFIX": GetAtt(cognito_user_pool_domain, 'Domain'),
             "COGNITO_CLIENT_ID": Ref(cognito_user_pool_client),
             "COGNITO_CLIENT_SECRET": GetAtt(cognito_user_pool_client, 'ClientSecret'),
-            "JWT_SECRET_PARAMETER_NAME": Ref(jwt_secret_parameter),
             "DOMAIN_NAME": Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
             "MAGIC_PATH": magic_path,
             "CONFIG_BUCKET": Ref(config_bucket),
