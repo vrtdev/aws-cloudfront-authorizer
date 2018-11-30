@@ -73,8 +73,8 @@
     </div>
 
     <div class="form-group">
-        <label for="subject">Subject</label>
-        <input class="form-control" type="text" name="subject" id="subject" value="Access to website"/>
+        <label for="subject">Reason for access (free text, mandatory)</label>
+        <input class="form-control" type="text" name="subject" id="subject" value=""/>
     </div>
 
     <fieldset class="form-group">
@@ -85,7 +85,11 @@
     <input class="btn btn-primary" type="submit"/>
 </form>
 
-<div class="authorizer-response"></div>
+<div class="authorizer-response">
+  <p>The link below grants the requested access. Either visit it yourself, or
+  send it to the intended party.</p>
+  <div id="token"></div>
+</div>
 
 <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
         integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
@@ -113,6 +117,7 @@
     var inputExp = formSignIn.querySelector('#exp');
     var dateTimePicker = $('#datetimepicker1');
     var authorizerResponse = document.querySelector('.authorizer-response');
+    var authorizerToken = document.getElementById('token');
 
     var syncDateTime = function (event) {
         inputExp.value = event.date.valueOf() / 1000 | 0 || ''
@@ -137,7 +142,7 @@
             .then(function (body) {
                 if (body.indexOf('http') === 0)
                     body = '<a href="' + body + '">' + body + '</a>';
-                authorizerResponse.innerHTML = body;
+                authorizerToken.innerHTML = body;
                 authorizerResponse.classList.add('show');
             })
             .catch(function (ex) {
