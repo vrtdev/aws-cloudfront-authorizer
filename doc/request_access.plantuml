@@ -1,7 +1,7 @@
 @startuml
 
 participant browser
-participant "vrt authorizer" as auth
+participant "authorizer" as auth
 participant "Cognito" as cognito
 
 group Initial request
@@ -22,17 +22,17 @@ hnote over auth: verify code and get username
 auth -> cognito: POST /oauth2/cognito_token: code
 auth <- cognito: id_token, access_token, refresh_token
 hnote over auth: verify id_token, convert to JWT
-browser <- auth: 200 HTML + JS\nSet-Cookie: vrt_authorizer_login=JWT(username)
+browser <- auth: 200 HTML + JS\nSet-Cookie: authorizer_login=JWT(username)
 
 else Logged in
 
-browser -> auth: GET /\nCookie: vrt_authorizer_login=JWT(username)
+browser -> auth: GET /\nCookie: authorizer_login=JWT(username)
 note right of auth: index.py
 browser <- auth: 200 HTML + JS
 
 end
 
-browser -> auth: XHR: GET /domain_list\nCookie: vrt_authorizer_login=JWT(username)
+browser -> auth: XHR: GET /domain_list\nCookie: authorizer_login=JWT(username)
 note right of auth: domain_list.py
 browser <- auth: 200 JSON
 
@@ -44,7 +44,7 @@ note over browser: User selects domains & duration
 
 group Request token
 
-browser -> auth: POST /request_access\nCookie: vrt_authorizer_login=JWT(username)\nData: exp=1234&subject=Foobar&domain1=checked&domain2=checked&...
+browser -> auth: POST /request_access\nCookie: authorizer_login=JWT(username)\nData: exp=1234&subject=Foobar&domain1=checked&domain2=checked&...
 note right of auth: request_access.py
 browser <- auth: 200 URL_from(JWT(username, domains, exp))
 

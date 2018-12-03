@@ -177,7 +177,7 @@ def handler(event, context):
                 'exp': cognito_token['exp'],  # Expire
                 'azp': cognito_token['cognito:username'],  # Authorized party
             }
-            vrt_auth_token = jwt.encode(
+            auth_token = jwt.encode(
                 jwt_content,
                 get_jwt_secret(),
                 algorithm='HS256',
@@ -185,7 +185,7 @@ def handler(event, context):
 
             structlog.get_logger().msg("Cognito Code exchanged succesfully, issuing JWT", jwt=jwt_content)
             return index_page({
-                'Set-Cookie': generate_cookie(get_config().login_cookie_name, vrt_auth_token),
+                'Set-Cookie': generate_cookie(get_config().login_cookie_name, auth_token),
             })
         except InternalServerError as e:
             structlog.get_logger().msg("Could not validate Cognito code", exception=e)
