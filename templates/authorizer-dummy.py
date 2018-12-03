@@ -1,24 +1,24 @@
 """Authorizer Dummy stack."""
-from troposphere import Template, Sub, Tags
+from troposphere import Template, Sub, GetAtt
 
-from central_helpers import write_template_to_file
-from central_helpers.vrt import add_tags
+import cfnutils.output
+import custom_resources.cloudformation
 import custom_resources.ssm
 
 template = Template(Description="Authorizer dummy stack for prod")
-vrt_tags = add_tags(template)
 
 custom_resources.use_custom_resources_stack_name_parameter(
     template=template,
-    parameter_kwargs_dict={'Default': 'vrt-dpc-custom-resources-2'},
 )
+
+cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
 
 lae_arn = template.add_resource(custom_resources.ssm.Parameter(
     "LaeArn",
     Name=Sub('/${AWS::StackName}/lae-arn'),
     Type="String",
     Value="arn:aws::1234567890:role/dummy",
-    Tags=Tags(**vrt_tags),
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 
-write_template_to_file(template)
+cfnutils.output.write_template_to_file(template)
