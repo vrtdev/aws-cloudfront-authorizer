@@ -237,6 +237,24 @@ performs a `lambda:GetFunction` on itself (it can find out its own name from the
 Code
 ----
 
-The code for our solution can be found on [our GitHub account].
+The code for our solution can be found on [our GitHub account]. The repository
+consists of three main parts:
 
 [our GitHub account]: https://github.com/vrtdev/aws-cloudfront-authorizer
+
+* The source code of the Python Lambda functions, located in the `src`
+  directory. The corresponding build-script (`build-python.sh`) bundles these
+  files into a ZIP file, ready to deploy to AWS Lambda. The build-script
+  optionally outputs a hash of the ZIPed content. We use this hash in the S3
+  key, which allows CloudFormation to be smart when updating the resources.
+  Additionally, tests are located in the `test` directory, and can be run with
+  the standard `pytest` command (make sure to add `src` to your $PYTHONPATH,
+  if your IDE doesn't do this for you).
+
+* The source code of the Lambda@Edge function, located in the `λ@E` directory.
+  The corresponding build-script (`build-nodejs.sh`) is similar to the Python
+  variant described above.
+
+* The CloudFormation templates, located in the `templates` directory. The
+  corresponding build-script (`build-cfn.sh`) converts these to JSONs in the
+  `output` directory.
