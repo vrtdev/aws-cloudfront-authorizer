@@ -24,7 +24,7 @@ to the origin. The two remaining hooks are run for the corresponding responses.
 [Lambda@Edge]: https://aws.amazon.com/lambda/edge/
 
 Within your Lambda@Edge functions, you are free to inspect and/or modify the
-request or response your are processing. You can even short-circuit the whole
+request or response you are processing. You can even short-circuit the whole
 process by generating a response right from the request-hook, bypassing the
 whole backend.
 
@@ -46,13 +46,13 @@ to verify access on a "higher" layer.
 
 [Web Application Firewall]: https://aws.amazon.com/waf/
 
-Preferably, we would like the following properties for the authorization
+Preferably, we would like the following properties for the authorisation
 logic:
 
  * We want to verify if the *user* has access, independent of his current
    location or network setup.
 
- * Access should delegatable. When a particular user has access, they should
+ * Access should delegable. When a particular user has access, they should
    be able to share that access with other parties.
 
  * Access should always be limited in time and scope (i.e. which sites are
@@ -72,13 +72,13 @@ Existing solutions
 
 You can configure CloudFront to require that every request is [signed], with the
 signature being either in the URL, or in a Cookie. This approach looks
-promising, since it moves the authorization from a network location (the IP you
+promising, since it moves the authorisation from a network location (the IP you
 appear to come from) to the user agent (browser) knowing a particular secret
 (either as URL, or as a cookie), independent of the current network situation.
 
 [signed]: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/PrivateContent.html
 
-For our use case, we want to minimize the amount of changes to the sites that
+For our use case, we want to minimise the amount of changes to the sites that
 are to be protected, so using signed URLs is not an option. Cookies are a good
 candidate: they can be set once, and are automatically used by the browser,
 even on cross-domain access from one protected site to another (e.g.
@@ -157,7 +157,7 @@ copy of the requested parameters. This URL represents the given access, and can
 be passed on to third parties. Visiting this URL sets the "master"-Cookie, which
 is checked for when accessing a protected site.
 
-![Sequence diagram of a browser requsting authorization](request_access.png)
+![Sequence diagram of a browser requesting authorisation](request_access.png)
 
 
 Implementation details
@@ -166,7 +166,7 @@ Implementation details
 The solution is deployed via [CloudFormation], using the [Serverless framework].
 It consists of four stacks:
 
- 1. The authorizer API-gateway and the Lambda functions to implement it, the
+ 1. The authoriser API-gateway and the Lambda functions to implement it, the
     parameter to store the JWT-secret and the associated [KMS key and policy],
     the [Cognito User Pool] and [Client].
 
@@ -211,7 +211,7 @@ stored as a SecureString in the [Parameter Store].
 
 [Parameter Store]: https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-paramstore.html
 
-The authorization cookie is stripped from the request by the Lambda@Edge
+The authorisation cookie is stripped from the request by the Lambda@Edge
 function. This is done for multiple reasons. Obviously, it's a security
 enhancement: the Cookie contains "secret" information that is no longer needed
 after this step. But it also reduces the observable changes in behaviour in
