@@ -237,10 +237,6 @@ performs a `lambda:GetFunction` on itself (it can find out its own name from the
 Code
 ----
 
-The code for our solution can be found WHERE? Does it need redacting? TODO
+The code for our solution can be found on [our GitHub account].
 
-TODO before open source release:
- 
- * Custom resources 2 open source'en
- 
- * Helpers wegwerken uit deze code
+[our GitHub account]: https://github.com/vrtdev/aws-cloudfront-authorizer
