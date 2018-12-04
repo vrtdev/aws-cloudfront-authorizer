@@ -154,8 +154,12 @@ API-gateway. Authentication happens via [Cognito], which leverages our existing
 Once a user is authenticated, they can select which protected domains they want
 access to, and specify an expiration time. The result is an URL with a signed
 copy of the requested parameters. This URL represents the given access, and can
-be passed on to third parties. Visiting this URL sets the "master"-Cookie, which
-is checked for when accessing a protected site.
+be passed on to third parties.
+
+![Login dialogue](login-page.png)
+
+Visiting this URL sets the "master"-Cookie, which is checked for when accessing
+a protected site.
 
 ![Sequence diagram of a browser requesting authorisation](request_access.png)
 
