@@ -262,3 +262,15 @@ consists of three main parts:
 * The CloudFormation templates, located in the `templates` directory. The
   corresponding build-script (`build-cfn.sh`) converts these to JSONs in the
   `output` directory.
+
+
+Conclusion
+----------
+
+The authoriser accomplishes most of what we wanted to achieve. It prevents
+unauthorised access, while providing a self-service way for authorised users to
+delegate their permissions to third parties (suppliers, native apps, …).
+CloudFront distributions that want to use the authoriser only require minimal
+changes to make use of the provided service. Unfortunately, the observable
+behaviour of protected websites is slightly changed: a particular (but
+configurable) path-prefix is no longer available for the site to use.
