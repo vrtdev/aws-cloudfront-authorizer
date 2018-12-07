@@ -3,58 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Login</title>
-    <link rel="stylesheet"
-          href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
-          integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
-          crossorigin="anonymous">
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.1.2/css/tempusdominus-bootstrap-4.css"
-          integrity="sha256-XPTBwC3SBoWHSmKasAk01c08M6sIA5gF5+sRxqak2Qs="
-          crossorigin="anonymous"/>
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
-          integrity="sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0="
-          crossorigin="anonymous"/>
-    <style media="screen">
-        html, body {
-            height: 100%;
-        }
-
-        body {
-            display: -ms-flexbox;
-            display: flex;
-            -ms-flex-align: center;
-            align-items: center;
-            flex-direction: column;
-            padding-top: 40px;
-            padding-bottom: 40px;
-            background-color: #f5f5f5;
-        }
-
-        .form-signin,
-        .authorizer-response {
-            width: 100%;
-            max-width: 480px;
-            padding: 30px 25px;
-            margin: 2rem auto;
-            background: white;
-            border-radius: 5px;
-            box-shadow: 0 0 35px rgba(0, 0, 0, .1);
-        }
-
-        .authorizer-response {
-            display: none;
-            word-break: break-all;
-        }
-
-        .authorizer-response.show {
-            display: block;
-        }
-
-        #domains {
-            margin-bottom: 2em;
-        }
-    </style>
+    <link rel="stylesheet" href="/styles/main.css">
 </head>
 <body>
 
@@ -74,7 +23,7 @@
 
     <div class="form-group">
         <label for="subject">Reason for access (free text, mandatory)</label>
-        <input class="form-control" type="text" name="subject" id="subject" value=""/>
+        <input class="form-control" type="text" name="subject" id="subject" value="" required />
     </div>
 
     <fieldset class="form-group">
@@ -85,11 +34,7 @@
     <input class="btn btn-primary" type="submit"/>
 </form>
 
-<div class="authorizer-response">
-  <p>The link below grants the requested access. Either visit it yourself, or
-  send it to the intended party.</p>
-  <div id="token"></div>
-</div>
+<div class="authorizer-response"></div>
 
 <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
         integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
@@ -106,91 +51,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.1.2/js/tempusdominus-bootstrap-4.min.js"
         integrity="sha256-z0oKYg6xiLq3yJGsp/LsY9XykbweQlHl42jHv2XTBz4="
         crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/fetch/3.0.0/fetch.min.js"
-        integrity="sha256-E1M+0f/hvoNVoV8K5RSn1gwe4EFwlvORnOrFzghX0wM="
+<script src="https://cdnjs.cloudflare.com/ajax/libs/native-promise-only/0.8.1/npo.js"
+        integrity="sha256-o/UXdF4sFrbgV5UCIWF5ca7VMLDdplhzA4knJ4nFsc0="
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fetch/2.0.4/fetch.min.js"
+        integrity="sha256-eOUokb/RjDw7kS+vDwbatNrLN8BIvvEhlLM5yogcDIo="
         crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@ungap/url-search-params@0.1.1/min.js" charset="utf-8"></script>
 
-<script type="application/javascript">
-    var dateTime = new Date();
-    var formSignIn = document.querySelector('.form-signin');
-    var inputExp = formSignIn.querySelector('#exp');
-    var dateTimePicker = $('#datetimepicker1');
-    var authorizerResponse = document.querySelector('.authorizer-response');
-    var authorizerToken = document.getElementById('token');
-
-    var syncDateTime = function (event) {
-        inputExp.value = event.date.valueOf() / 1000 | 0 || ''
-    };
-
-    formSignIn.addEventListener('submit', function (e) {
-        e.preventDefault();
-
-        var formData = new URLSearchParams(new FormData(formSignIn));
-
-        fetch('/request_access', {
-            credentials: 'include',
-            method: 'post',
-            body: formData
-        })
-            .then(function (response) {
-                if (response.status !== 200)
-                    throw new Error(response.statusText);
-
-                return response.text()
-            })
-            .then(function (body) {
-                if (body.indexOf('http') === 0)
-                    body = '<a href="' + body + '">' + body + '</a>';
-                authorizerToken.innerHTML = body;
-                authorizerResponse.classList.add('show');
-            })
-            .catch(function (ex) {
-                authorizerResponse.innerHTML = ex;
-                authorizerResponse.classList.add('show');
-            });
-    });
-
-    dateTimePicker.datetimepicker({
-        format: 'DD/MM/YYYY HH:MM',
-        minDate: dateTime,
-        defaultDate: dateTime.setDate(dateTime.getDate() + 1)
-    });
-
-    dateTimePicker.on('change.datetimepicker', syncDateTime);
-
-    var expiresInOneDay = dateTime.getTime() / 1000 | 0;
-    document.getElementById('exp').value = expiresInOneDay;
-
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4 && xhr.status === 200)
-            var div = document.getElementById('domains');
-
-        var domains = JSON.parse(xhr.responseText);
-
-        for (var domain in domains) {
-            var container = document.createElement('div');
-            container.className = 'form-check';
-
-            var label = document.createElement('label');
-            label.className = "form-check-label";
-            label.setAttribute("for", domains[domain]);
-
-            var el = document.createElement('input');
-            el.setAttribute("id", domains[domain]);
-            el.name = domains[domain];
-            el.className = "form-check-input";
-            el.type = "checkbox";
-            //el.checked = "checked";
-            label.appendChild(document.createTextNode(domains[domain]));
-            container.appendChild(el);
-            container.appendChild(label);
-            div.appendChild(container);
-        }
-    };
-    xhr.open("GET", 'domain_list', true);
-    xhr.send(null);
-</script>
+<script src="/scripts/main.js"></script>
 </body>
 </html>
