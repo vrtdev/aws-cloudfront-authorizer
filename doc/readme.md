@@ -132,7 +132,7 @@ through, just as before. But when no cookie (or an expired cookie) is
 present, the browser is redirected to the authorizer domain to check the
 "master"-Cookie.
 
-![Sequence diagram of a browser accessing a restricted site](use_access.png)
+![Sequence diagram of a browser accessing a restricted site](/doc/use_access.png)
 
 In order to do this Cookie-QueryParameter-Cookie dance, we need to hijack at
 least one URL from the protected domain. This does change the observable
@@ -156,12 +156,12 @@ access to, and specify an expiration time. The result is an URL with a signed
 copy of the requested parameters. This URL represents the given access, and can
 be passed on to third parties.
 
-![Login dialogue](login-page.png)
+![Login dialogue](/doc/login-page.png)
 
 Visiting this URL sets the "master"-Cookie, which is checked for when accessing
 a protected site.
 
-![Sequence diagram of a browser requesting authorisation](request_access.png)
+![Sequence diagram of a browser requesting authorisation](/doc/request_access.png)
 
 
 Implementation details
@@ -190,7 +190,7 @@ It consists of four stacks:
 [Cognito User Pool]: https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-identity-pools.html
 [Client]: https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-settings-client-apps.html
 
-![component diagram of the CloudFormation stacks](components.svg)
+![component diagram of the CloudFormation stacks](/doc/components.svg)
 
 
 ### Tokens
@@ -206,7 +206,7 @@ since it only contains non-secret information:
  * The expiration time of the access
 
  * The username of the person that generated the token
- 
+
  * A free-text field describing the granted access
 
 Since the party issuing tokens, and the party verifying tokens are the same, we
