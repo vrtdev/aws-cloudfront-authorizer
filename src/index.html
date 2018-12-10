@@ -116,7 +116,7 @@
   formSignIn.addEventListener('submit', function (e) {
       e.preventDefault();
 
-      const formData = new FormData(formSignIn);
+      var formData = new URLSearchParams(new FormData(formSignIn));
 
       fetch('/request_access', {
           credentials: 'include',
