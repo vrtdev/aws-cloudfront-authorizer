@@ -1,0 +1,195 @@
+@startuml
+
+participant "Browser\n(Resource Owner)" as robrowser
+participant "Possibly different\nbrowser (Client)" as clbrowser
+participant "Restricted site\nCloudFront\n(Resource Server)" as protcf
+participant "Authorizer\n(Authorization Server)" as auth
+participant "Restricted site" as protorigin
+participant "Cognito" as cognito
+
+
+' Also change the style below, after newpage
+skinparam noteBackgroundColor<<security>> #orange
+legend
+<w:red>Reflected attacker controlled data</w>
+<w:orange>Reflected attacker controlled data, but with validation</w>
+<back:orange>security-related notes</back>
+end legend
+
+
+autonumber "<b>[000]"
+
+
+opt Delegate access
+
+opt No refresh token
+
+robrowser -> auth: GET https://authorizer/delegate\nCookie: refresh_token=<none or expired>
+hnote over auth: Check refresh_token\nNOT OK => redirect to Cognito
+activate robrowser
+robrowser <- auth: 302 cognito?state=JWT{action: delegate}
+deactivate robrowser
+
+robrowser --> cognito: GET https://cognito/login?\n     state=JWT{action: delegate}&\n     redirect_uri=https%3a%2f%2fauthorizer%2fauthenticate&\n     ...
+activate robrowser
+...authentication...
+robrowser <- cognito: 302 <w:orange>https://authorizer/authenticate</w>?\n     code=12345&\n     state=<w:red>JWT{action: delegate}</w>
+deactivate robrowser
+note <<security>> left
+redirect_uri must be
+registered with Cognito
+-> attacker can't redirect
+to his own domain
+end note
+
+robrowser -> auth: GET https://authorizer/authenticate?\n     code=12345&\n     state=JWT{action: delegate}
+activate robrowser
+hnote over auth: verify code and get Cognito id_token
+auth -> cognito: POST /oauth2/cognito_token: code
+auth <- cognito: id_token, access_token, refresh_token
+hnote over auth: verify id_token, issue refresh_token\naction == delegate -> redirect to delegate URL
+robrowser <- auth: 302 https://authorizer/delegate\nSet-Cookie: refresh_token=JWT{azp, exp}
+deactivate robrowser
+
+end
+
+
+robrowser -> auth: GET https://authorizer/delegate\nCookie: refresh_token=JWT{azp, exp}
+activate robrowser
+robrowser <- auth: 200 HTML + JS: form to fill out\nX-Frame-Options: deny\nContent-Security-Policy: frame-ancestors 'none';\n<i>Access-Control-Allow-Credentials:-header NOT SET</i>
+deactivate robrowser
+note <<security>> left
+ - Information disclosure
+    of protected domains
+    -> CORS prevents JS from
+         getting response
+ - ClickJacking
+    -> iFrame not allowed
+end note
+
+hnote over robrowser: user selects\npermissions\nto grant
+
+robrowser -> auth: POST https://authorizer/delegate\nCookie: refresh_token=JWT{azp, exp}\nData: exp, sub, domains
+activate robrowser
+hnote over auth: verify sub non-empty\nverify domains is subset of allowed list\n(exp can be longer than refresh_token.exp)
+robrowser <- auth: 200 Grant URL:\nhttps://authorizer/authenticate?\n     grant=JWT{azp, sub, exp, scope: domains}\n<i>Access-Control-Allow-Credentials:-header NOT SET</i>
+deactivate robrowser
+note <<security>> left
+ - Information disclosure
+    of grant URL
+    -> CORS prevents JS from
+         getting response
+end note
+
+|||
+clbrowser <-- robrowser: <i>Deliver Grant URL</i>
+|||
+
+clbrowser -> auth: GET https://authorizer/authenticate?\n     grant=JWT{azp, sub, exp, scope}
+hnote over auth: validate JWT
+clbrowser <- auth: 200 <i><w:orange>overview of authorizations</w></i>\n     https://authorizer/authenticate?grant=<i>previous_JWT</i>\nSet-Cookie: refresh_token=<w:orange>JWT{azp, sub, exp, scope}</w>
+note <<security>> left
+ - DoS via phishing link
+    -> provide previous token
+end note
+
+
+end
+
+
+
+newpage
+skinparam noteBackgroundColor<<security>> #orange
+
+
+
+opt No access token for domain
+
+clbrowser -> protcf: GET https://restricted/whatever\nCookie: access_token=<none or expired>
+activate clbrowser
+hnote over protcf: λ@E Viewer Request:\ncheck Cookie:-header\nNOT OK => redirect to authorizer
+clbrowser <- protcf: 302 https://authorizer/authorize?\n     redirect_uri=<w:orange>https%3a%2f%2frestricted</w><w:red>%2fwhatever</w>
+deactivate clbrowser
+
+
+opt No refresh token
+
+note over robrowser, clbrowser: If these are different browsers, FAIL\n\
+If these are the same browser,\n\
+Get a refresh_token similar to the\n\
+section above:
+
+robrowser -> auth: GET https://authorizer/authorize?\n     redirect_uri=https%3a%2f%2frestricted%2fwhatever\nCookie: refresh_token=<none or expired>
+activate robrowser
+hnote over auth: Check refresh_token\nNOT OK => redirect to Cognito
+robrowser <- auth: 302 https://cognito?state=JWT{action: authorize, redirect_uri: <w:red>https:/</w><w:red>/restricted/whatever</w>}
+deactivate robrowser
+
+robrowser -> cognito: GET https://cognite?state=JWT{action: authorize, redirect_uri: https://restricted/whatever}
+activate robrowser
+...authentication...
+robrowser <- cognito: 302 https://authorizer/authenticate?\n     code=12345&\n     state=<w:red>JWT{action: authorize, redirect_uri: https://restricted/whatever}</w>
+deactivate robrowser
+
+robrowser -> auth: GET https://authorizer/authenticate?\n     code=12345&\n     state=JWT{action: authorize, redirect_uri: https://restricted/whatever}
+activate robrowser
+hnote over auth: verify code and get Cognito id_token
+auth -> cognito: POST /oauth2/cognito_token: code
+auth <- cognito: id_token, access_token, refresh_token
+hnote over auth: verify id_token, issue refresh_token\naction == authorize\n     -> redirect to authorize\n     copy redirect_uri
+robrowser <- auth: 302 https://authorizer/authorize?\n     redirect_uri=<w:red>https%3a%2f%2frestricted%2fwhatever</w>\nSet-Cookie: refresh_token=JWT{azp, exp}
+deactivate robrowser
+
+note over robrowser, clbrowser: Same browser:\nrefresh_token cookie is shared
+
+end
+
+
+clbrowser -> auth: GET https://authorizer/authorize?\n     redirect_uri=https%3a%2f%2frestricted%2fwhatever\nCookie: refresh_token=JWT{azp, exp[, sub, scope]}
+activate clbrowser
+hnote over auth: Validate refresh_token\nCheck redirect_uri allowed domain\nOK => issue access_token for domain
+clbrowser <- auth: 302 https://<w:orange>restricted</w>/auth-UUID/set-cookie?\n     access_token=JWT{azp, sub, exp, scope: domain}&\n     redirect_uri=<w:orange>https%3a%2f%2frestricted</w><w:red>%2fwhatever</w>
+deactivate clbrowser
+note <<security>> left
+ - open redirect
+    -> domain is listed in JWT
+    -> JWT only allows domain from list
+         from config
+end note
+
+
+clbrowser -> protcf: GET https://restricted/auth-UUID/set-cookie?\n     access_token=JWT{azp, sub, exp, scope}&\n     redirect_uri=https%3a%2f%2frestricted%2fwhatever
+activate clbrowser
+hnote over protcf: λ@E Viewer Request:\nverify if access_token is valid for domain `restricted`\nconvert query parameter to Set-Cookie\nissue redirect
+clbrowser <- protcf: 302 <w:orange>https://restricted</w><w:red>/whatever</w>\nSet-Cookie: access_token=<w:orange>JWT{azp, sub, exp, scope}</w>\nReferrer-Policy: no-referrer
+deactivate clbrowser
+note <<security>> left
+ - DoS via phishing link
+    -> provided token must be valid
+    => only reduction in `exp` can be done
+end note
+
+end
+
+
+
+clbrowser -> protcf: GET https://restricted/whatever\nCookie: access_token=JWT{azp, sub, exp, scope}
+activate clbrowser
+note right of protcf: λ@E Viewer Request:\ncheck Cookie:-header\nOK => pass through
+protcf -> protorigin:  GET https://restricted/whatever\nCookie: <stripped>
+protcf <- protorigin: 200
+clbrowser <- protcf: 200
+deactivate clbrowser
+note <<security>> left
+- JWT in Referrer
+    -> Referrer-policy should prevent this
+    -> browsers keep original Referrer on redirect
+- CSRF
+    -> no Access-Control-Allow-Credentials:-header
+         prevents JS from accessing the response
+    -> for POST requests, existing
+         CSRF-protections should suffice
+end note
+
+
+@enduml
