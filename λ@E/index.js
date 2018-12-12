@@ -4,6 +4,7 @@
  * The alternative would be to hook on Origin Request. This has the advantage of caching the "no cookie"-case, but
  * causes all browsers to effectively have their own private cache on CloudFront. This hides potential bugs when the
  * CloudFront configuration would cause users to see each other's cached pages.
+ * This would also open up a bug when the CloudFront caching behaviour is misconfigured to ignore the authorizer cookie.
  *
  * Hence, we want to run on Viewer Request, this has the least amount of influence on the remaining flow.
  */
@@ -25,6 +26,17 @@ function asyncLambdaGetFunction(param, service_param = {}) {
     });
 }
 
+function asyncS3GetObject(param) {
+    // Async wrapper around the S3 GetObject API call
+    return new Promise(function(resolve, reject) {
+        const s3 = new AWS.S3();
+        s3.getObject(param, function(err, data) {
+            if(err !== null) { reject(err); }
+            else { resolve(data); }
+        });
+    });
+}
+
 async function get_config_bucket(context) {
     /* Lambda@Edge does not support environment parameters.
      * We use Tags as workaround. This function gets the value of the tag.
@@ -39,18 +51,6 @@ async function get_config_bucket(context) {
     );
     return lambda_description.Tags['ConfigBucket'];
 }
-
-function asyncS3GetObject(param) {
-    // Async wrapper around the S3 GetObject API call
-    return new Promise(function(resolve, reject) {
-        const s3 = new AWS.S3();
-        s3.getObject(param, function(err, data) {
-            if(err !== null) { reject(err); }
-            else { resolve(data); }
-        });
-    });
-}
-
 async function get_config_(context) {
     let config = {  // Default settings
         'verify_access_url': 'https://authorizer.example.org/verify_access',
@@ -69,10 +69,8 @@ async function get_config_(context) {
         console.log("Retrieved config from S3:");
         console.log(body);
         const parsed_body = JSON.parse(body);
-        for(let key in config) {
-            if(key in parsed_body) {
-                config[key] = parsed_body[key];
-            }
+        for(let key in parsed_body) {
+            config[key] = parsed_body[key];
         }
     } catch(e) {
         console.log("Could not retrieve config from S3. Using defaults.");
@@ -80,14 +78,12 @@ async function get_config_(context) {
     }
     return config;
 }
-
 function get_config_promise(context) {
     if(typeof get_config_promise.cache === 'undefined') {
         get_config_promise.cache = get_config_(context);
     }
     return get_config_promise.cache
 }
-
 
 function get_jwt_secret_promise(region, param_name) {
     if(typeof get_jwt_secret_promise.cache === 'undefined') {
@@ -112,7 +108,6 @@ function get_jwt_secret_promise(region, param_name) {
 function encode_utf8(s) {
     return unescape(encodeURIComponent(s));
 }
-
 function decode_utf8(s) {
     return decodeURIComponent(escape(s));
 }
@@ -139,13 +134,20 @@ function normalize_cookies(headers) {
     let cookies = {};
     for(let cookie of cookies_kv_pairs) {
         let t = cookie.split('=');
-        cookies[decode_utf8(t[0])] = decode_utf8(t[1]);
+        const name = decode_utf8(t[0]);
+        const value = decode_utf8(t.splice(1).join('='));  // everything after first =
+        /* value may be doublequoted, but the quotes are considered part of the value
+         * https://stackoverflow.com/questions/1969232/allowed-characters-in-cookies#1969339
+         */
+        cookies[name] = value;
     }
 
     return cookies;
 }
-
 function render_cookie_header_value(cookies) {
+    /* Inverse of normalize_cookies(): recombines the cookies-dictionary
+     * into a string usable as Cookie:-header value.
+     */
     let cookies_array = [];
     for(let key in cookies) {
         if (cookies.hasOwnProperty(key)) {
@@ -157,7 +159,6 @@ function render_cookie_header_value(cookies) {
 
 class NotAuthorized extends Error {}
 class BadToken extends Error {}
-
 async function validate_cookie(cookies, hostname, config) {
     if(!(config.cookie_name in cookies)) {
         // Cookie not present. Redirect to authz
@@ -166,7 +167,7 @@ async function validate_cookie(cookies, hostname, config) {
     }
 
     const cookie_value = cookies[config.cookie_name];
-    console.log(`Found cookie: ${config.cookie_name}=${cookie_value}`);
+    console.log(`Found cookie with name "${config.cookie_name}"`);  // don't log value for privacy reasons
 
     let token;
     try {
@@ -181,9 +182,9 @@ async function validate_cookie(cookies, hostname, config) {
                 "algorithms": ["HS256"],
             }
         );
-        console.log("JWT validated: " + JSON.stringify(token));
+        console.log("JWT validated");  // don't log token content for privacy reasons
     } catch(e) {
-        console.log("JWT validation failed: " + e);
+        console.log("JWT validation failed" + e);  // Token is invalid anyway, no (less) privacy issues
         // Hide validation error for security reasons
         // Assume expired cookie, redirect to authz
         throw new NotAuthorized();
@@ -215,13 +216,16 @@ exports.handler = async (event, context) => {
     const hostname = request_headers.host[0].value;  // Host:-header is required, should always be present;
     console.log(`Processing request for Host: ${hostname}`);
     const cookies = normalize_cookies(request_headers);
-    console.log(`Cookies: ${JSON.stringify(cookies)}`);
+    // Don't log cookies for privacy reasons
 
     try {
         await validate_cookie(cookies, hostname, config);
 
+        // Remove access_token from Cookie:-header
         delete cookies[config.cookie_name];
         request.headers['cookie'] = [{'key': 'Cookie', 'value': render_cookie_header_value(cookies)}];
+
+        // Pass through request
         return request;
     } catch(e) {
         if(e instanceof BadToken) {
@@ -232,6 +236,7 @@ exports.handler = async (event, context) => {
                 bodyEncoding: 'text',
                 body: 'Bad request',
             };
+
         } else if(e instanceof NotAuthorized) {
             let return_url = `https://${hostname}${request.uri}`;
             if(request.querystring !== '') {
@@ -250,6 +255,7 @@ exports.handler = async (event, context) => {
                 bodyEncoding: 'text',
                 body: 'Not authorized, redirecting to authorization server',
             };
+
         } else {
             return {
                 status: 500,
