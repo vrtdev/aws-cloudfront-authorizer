@@ -157,37 +157,36 @@ function render_cookie_header_value(cookies) {
     return cookies_array.join('; ');
 }
 
-class NotAuthorized extends Error {}
-class BadToken extends Error {}
-async function validate_cookie(cookies, hostname, config) {
-    if(!(config.cookie_name in cookies)) {
-        // Cookie not present. Redirect to authz
-        console.log(`Could not find cookie with name "${config.cookie_name}"`);
-        throw new NotAuthorized();
-    }
-
-    const cookie_value = cookies[config.cookie_name];
-    console.log(`Found cookie with name "${config.cookie_name}"`);  // don't log value for privacy reasons
-
-    let token;
+class InternalServerError extends Error {}
+class InvalidToken extends Error {}  // token is badly signed or expired
+class BadToken extends Error {}  // token does not meet requirements
+async function validate_token(config, raw_token, hostname) {
+    let jwt_secret;
     try {
-        const get_jwt_secret = await get_jwt_secret_promise(
+        const get_jwt_secret = await get_jwt_secret_promise(  // may throw
             config.parameter_store_region,
             config.parameter_store_parameter_name
         );
-        token = JWT.verify(
-            cookie_value,
-            get_jwt_secret,
+        jwt_secret = await get_jwt_secret;
+    } catch(e) {
+        throw InternalServerError(e);
+    }
+
+    let token;
+    try {
+        token = JWT.verify(  // may throw
+            raw_token,
+            jwt_secret,
             {
                 "algorithms": ["HS256"],
             }
         );
-        console.log("JWT validated");  // don't log token content for privacy reasons
+        console.log("JWT decoded");  // don't log token content for privacy reasons
     } catch(e) {
         console.log("JWT validation failed" + e);  // Token is invalid anyway, no (less) privacy issues
         // Hide validation error for security reasons
         // Assume expired cookie, redirect to authz
-        throw new NotAuthorized();
+        throw new InvalidToken();
     }
 
     if( !('iat' in token) ||
@@ -201,11 +200,46 @@ async function validate_cookie(cookies, hostname, config) {
 
     if(token['domains'].indexOf(hostname) === -1) {
         console.log(`Hostname '${hostname}' not in allowed list`);
-        // Token is invalid for this domain. Assume bad intend and return 400 (instead of redirect to authz)
+        // Token is invalid for this domain.
         throw new BadToken();
     }
 
-    console.log("Allowing access");
+    console.log(`Token valid for ${hostname}`);
+
+    return token;
+}
+
+
+function bad_request(config, request) {
+    return {
+        status: 400,
+        statusDescription: 'Bad Request',
+        headers: {},
+        bodyEncoding: 'text',
+        body: 'Bad request',
+    };
+}
+function redirect_auth(config, request) {
+    const request_headers = request.headers;
+    const hostname = request_headers.host[0].value;  // Host:-header is required, should always be present;
+
+    let return_url = `https://${hostname}${request.uri}`;
+    if(request.querystring !== '') {
+        return_url += '?' + request.querystring;
+    }
+
+    return {
+        status: '302',
+        statusDescription: 'Found',
+        headers: {
+            'location': [{
+                key: 'Location',
+                value: `${config.verify_access_url}?return_to=${encodeURIComponent(return_url)}`,
+            }],
+        },
+        bodyEncoding: 'text',
+        body: 'Not authorized, redirecting to authorization server',
+    };
 }
 
 exports.handler = async (event, context) => {
@@ -218,52 +252,26 @@ exports.handler = async (event, context) => {
     const cookies = normalize_cookies(request_headers);
     // Don't log cookies for privacy reasons
 
-    try {
-        await validate_cookie(cookies, hostname, config);
-
-        // Remove access_token from Cookie:-header
-        delete cookies[config.cookie_name];
-        request.headers['cookie'] = [{'key': 'Cookie', 'value': render_cookie_header_value(cookies)}];
-
-        // Pass through request
-        return request;
-    } catch(e) {
-        if(e instanceof BadToken) {
-            return {
-                status: 400,
-                statusDescription: 'Bad Request',
-                headers: {},
-                bodyEncoding: 'text',
-                body: 'Bad request',
-            };
-
-        } else if(e instanceof NotAuthorized) {
-            let return_url = `https://${hostname}${request.uri}`;
-            if(request.querystring !== '') {
-                return_url += '?' + request.querystring;
-            }
-
-            return {
-                status: '302',
-                statusDescription: 'Found',
-                headers: {
-                    'location': [{
-                        key: 'Location',
-                        value: `${config.verify_access_url}?return_to=${encodeURIComponent(return_url)}`,
-                    }],
-                },
-                bodyEncoding: 'text',
-                body: 'Not authorized, redirecting to authorization server',
-            };
-
-        } else {
-            return {
-                status: 500,
-                statusDescription: 'Internal Server Error',
-                headers: {},
-                bodyEncoding: 'text',
-                body: e.toString(),
-            }
-        }
+    if(!(config.cookie_name in cookies)) {
+        // Cookie not present. Redirect to authz
+        console.log(`Could not find cookie with name "${config.cookie_name}"`);
+        return redirect_auth(config, request);
     }
+
+    const cookie_value = cookies[config.cookie_name];
+    console.log(`Found cookie with name "${config.cookie_name}"`);  // don't log value for privacy reasons
+
+    try {
+        await validate_token(config, cookie_value, hostname);
+    } catch(e) {
+        if(e instanceof InvalidToken) return redirect_auth(config, request);
+        else if(e instanceof BadToken) return bad_request(config, request);
+    }
+
+    // Remove access_token from Cookie:-header
+    delete cookies[config.cookie_name];
+    request.headers['cookie'] = [{'key': 'Cookie', 'value': render_cookie_header_value(cookies)}];
+
+    // Pass through request
+    return request;
 };
