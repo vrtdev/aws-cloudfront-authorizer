@@ -13,6 +13,8 @@
 
 const JWT = require('jsonwebtoken');
 const AWS = require('aws-sdk');
+const querystring = require('querystring');
+const url = require('url');
 
 
 function asyncLambdaGetFunction(param, service_param = {}) {
@@ -58,6 +60,7 @@ async function get_config_(context) {
         'login_cookie_name': 'authorizer_login',
         'parameter_store_region': 'eu-west-1',
         'parameter_store_parameter_name': '/authorizer/jwt-secret',
+        'set_cookie_path': '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220/set-cookie',
     };
     const config_bucket = await get_config_bucket(context);
     try {
@@ -211,6 +214,7 @@ async function validate_token(config, raw_token, hostname) {
 
 
 function bad_request(config, request) {
+    console.log("Issuing BadRequest");
     return {
         status: 400,
         statusDescription: 'Bad Request',
@@ -220,6 +224,7 @@ function bad_request(config, request) {
     };
 }
 function redirect_auth(config, request) {
+    console.log("Issuing redirect to authz");
     const request_headers = request.headers;
     const hostname = request_headers.host[0].value;  // Host:-header is required, should always be present;
 
@@ -241,6 +246,16 @@ function redirect_auth(config, request) {
         body: 'Not authorized, redirecting to authorization server',
     };
 }
+function internal_server_error(config, exception) {
+    console.log("Issuing Internal Server Error");
+    console.log(exception);
+    return {
+        status: '500',
+        statusDescription: 'Internal Server Error',
+        bodyEncoding: 'text',
+        body: exception.toString(),  // TODO: replace this with:   body: 'Something went wrong...',
+    };
+}
 
 exports.handler = async (event, context) => {
     const config = await get_config_promise(context);
@@ -249,6 +264,73 @@ exports.handler = async (event, context) => {
     const request_headers = request.headers;
     const hostname = request_headers.host[0].value;  // Host:-header is required, should always be present;
     console.log(`Processing request for Host: ${hostname}`);
+
+    if( request.uri === config.set_cookie_path ) {
+        console.log("Processing set-cookie request");
+
+        const params = querystring.parse(request.querystring);
+        let headers = {};
+
+        const raw_token = params['token'];  // may be undefined
+        if(raw_token === undefined) {
+            console.log("No token present");
+            return bad_request();
+        }
+
+        let token;
+        try {
+            token = await validate_token(config, raw_token, hostname);  // may throw
+            // const now = (new Date()) / 1000;
+            // if(token['iat'] < (now - 30)) {
+            //     console.log("Token is issued more than 30 seconds ago")
+            //     return bad_request();
+            // }
+        } catch(e) {
+            console.log("Token not valid");
+            return bad_request();
+        }
+        const expire = (new Date(token['exp'] * 1000)).toUTCString();  // JavaScript works in milliseconds since epoch
+        headers['set-cookie'] = [{
+            key: 'Set-Cookie',
+            value: `${config.cookie_name}=${params['token']}; expires=${expire}; Path=/; Secure; HttpOnly`,
+        }];
+
+        let redirect_uri;
+        try {
+            redirect_uri = new url.parse(params['return_to']);  // may throw TypeError on undefined
+        } catch(e) {
+            return internal_server_error(config, e);
+        }
+        if(redirect_uri.hostname !== hostname) {
+            console.log(`Token not valid for ${hostname}`);
+            return bad_request();
+        }
+        headers['location'] = [{
+            key: 'Location',
+            value: redirect_uri.href,
+        }];
+
+        /* The Refer(r)er received by the next page may include the secret
+         * access_token.
+         * Normally, the browser keeps the original Refer(r)er after a
+         * (server side) redirect.
+         * This is added as an extra precaution.
+         */
+        headers['referrer-policy'] = [{
+            key: 'Referrer-Policy',
+            value: 'no-referrer',
+        }];
+
+        console.log(`Issuing redirect to ${redirect_uri.href}, with Set-Cookie:-header`);
+        return {
+            status: '302',
+            statusDescription: 'Found',
+            headers: headers,
+            bodyEncoding: 'text',
+            body: 'Authorized, redirecting to page',
+        };
+    }
+
     const cookies = normalize_cookies(request_headers);
     // Don't log cookies for privacy reasons
 
@@ -259,13 +341,16 @@ exports.handler = async (event, context) => {
     }
 
     const cookie_value = cookies[config.cookie_name];
-    console.log(`Found cookie with name "${config.cookie_name}"`);  // don't log value for privacy reasons
+    console.log(`Found cookie with name "${config.cookie_name}"`);  // don't log value
 
     try {
-        await validate_token(config, cookie_value, hostname);
+        const token = await validate_token(config, cookie_value, hostname);
+        console.log("Access granted");
+        console.log(token);  // Don't log signed token, but content only
     } catch(e) {
         if(e instanceof InvalidToken) return redirect_auth(config, request);
         else if(e instanceof BadToken) return bad_request(config, request);
+        else return internal_server_error(config, e);
     }
 
     // Remove access_token from Cookie:-header
@@ -273,5 +358,6 @@ exports.handler = async (event, context) => {
     request.headers['cookie'] = [{'key': 'Cookie', 'value': render_cookie_header_value(cookies)}];
 
     // Pass through request
+    console.log("Passing through request");
     return request;
 };
