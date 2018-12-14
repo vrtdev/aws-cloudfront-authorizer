@@ -10,14 +10,6 @@ template = Template()
 
 custom_resources.use_custom_resources_stack_name_parameter(template)
 
-authorizer_stack = template.add_parameter(Parameter(
-    "AuthorizerStack",
-    Type=constants.STRING,
-    Default="authorizer",
-    Description="Authorizer stack to import from",
-))
-template.set_parameter_label(authorizer_stack, "Authorizer stack")
-
 param_authorizer_lae_arn = template.add_parameter(Parameter(
     "AuthorizerLaeParam",
     Type="AWS::SSM::Parameter::Value<String>",
@@ -92,7 +84,8 @@ example_distribution = template.add_resource(cloudfront.Distribution(
         ],
         CacheBehaviors=[
             # If you have additional cache behaviours,
-            # make sure that /auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220/set-cookie
+            # make sure that (at least) the behaviour matching
+            # /auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220/set-cookie
             # has the Lambda-function associated.
         ],
         DefaultCacheBehavior=cloudfront.DefaultCacheBehavior(

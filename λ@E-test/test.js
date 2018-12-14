@@ -271,7 +271,7 @@ describe('handler', function() {
             request.querystring = '';
             request.headers['cookie'] = [{
                 key: 'Cookie',
-                value: `${config.cookie_name}=${signed_token}`,
+                value: `${config.cookie_name_access_token}=${signed_token}`,
             }];
             request.tag = 'foobar';
 

@@ -4,7 +4,7 @@ Authorizer parameter stack.
 This stack gathers the information needed to use the Authorizer in one place.
 """
 from troposphere import Template, Parameter, Ref, Sub, Output, Export, Join, AWS_STACK_NAME, constants, \
-    ImportValue, GetAtt
+    GetAtt
 import custom_resources.ssm
 import custom_resources.cloudformation
 import cfnutils.output
@@ -29,20 +29,6 @@ param_laearn = template.add_parameter(Parameter(
 template.set_parameter_label(param_laearn, "Lambda@Edge ARN")
 
 cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
-
-template.add_output(Output(
-    "ApiDomain",
-    Description='Domain name of the API',
-    Value=ImportValue(Sub('${' + param_authorizer_stack.title + '}-domain-name')),
-    Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'domain-name'])),
-))
-
-template.add_output(Output(
-    "MagicPath",
-    Description='Magic path',
-    Value=ImportValue(Sub('${' + param_authorizer_stack.title + '}-magic-path')),
-    Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'magic-path'])),
-))
 
 
 # Don't simply import-output the Lambda@Edge ARN, but do it via a Parameter

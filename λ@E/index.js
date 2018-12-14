@@ -54,16 +54,14 @@ async function get_config_bucket(context) {
     return lambda_description.Tags['ConfigBucket'];
 }
 async function get_config_(context) {
-    let config = {  // Default settings
+    let config = {  // Default settings, keep in sync with Lambda-code!
         'parameter_store_region': 'eu-west-1',
         'parameter_store_parameter_name': '/authorizer/jwt-secret',
 
         'set_cookie_path': '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220/set-cookie',
-        'set_cookie_token_param': 'token',
-        'set_cookie_location_param': 'return_to',
-        'cookie_name': 'authorizer_access',
+        'cookie_name_access_token': 'authorizer_access',
 
-        'verify_access_url': 'https://authorizer.example.org/verify_access',
+        'authorize_url': 'https://authorizer.example.org/authorize',
     };
     const config_bucket = await get_config_bucket(context);
     try {
@@ -242,7 +240,8 @@ function redirect_auth(config, request) {
         headers: {
             'location': [{
                 key: 'Location',
-                value: `${config.verify_access_url}?return_to=${encodeURIComponent(return_url)}`,
+                value: `${config.authorize_url}?` +
+                    `redirect_uri=${encodeURIComponent(return_url)}`,
             }],
         },
         bodyEncoding: 'text',
@@ -274,7 +273,7 @@ exports.handler = async (event, context) => {
         const params = querystring.parse(request.querystring);
         let headers = {};
 
-        const raw_token = params[config.set_cookie_token_param];  // may be undefined
+        const raw_token = params['access_token'];  // may be undefined
         if(raw_token === undefined) {
             console.log("No token present");
             return bad_request();
@@ -283,11 +282,11 @@ exports.handler = async (event, context) => {
         let token;
         try {
             token = await validate_token(config, raw_token, hostname);  // may throw
-            // const now = (new Date()) / 1000;
-            // if(token['iat'] < (now - 30)) {
-            //     console.log("Token is issued more than 30 seconds ago")
-            //     return bad_request();
-            // }
+            const now = (new Date()) / 1000;
+            if(token['iat'] < (now - 30)) {
+                console.log("Token is issued more than 30 seconds ago")
+                return bad_request();
+            }
         } catch(e) {
             console.log("Token not valid");
             return bad_request();
@@ -295,12 +294,12 @@ exports.handler = async (event, context) => {
         const expire = (new Date(token['exp'] * 1000)).toUTCString();  // JavaScript works in milliseconds since epoch
         headers['set-cookie'] = [{
             key: 'Set-Cookie',
-            value: `${config.cookie_name}=${raw_token}; expires=${expire}; Path=/; Secure; HttpOnly`,
+            value: `${config.cookie_name_access_token}=${raw_token}; expires=${expire}; Path=/; Secure; HttpOnly`,
         }];
 
         let redirect_uri;
         try {
-            redirect_uri = new url.parse(params[config.set_cookie_location_param]);  // may throw TypeError on undefined
+            redirect_uri = new url.parse(params['redirect_uri']);  // may throw TypeError on undefined
         } catch(e) {
             return internal_server_error(config, e);
         }
@@ -337,14 +336,14 @@ exports.handler = async (event, context) => {
     const cookies = normalize_cookies(request_headers);
     // Don't log cookies for privacy reasons
 
-    if(!(config.cookie_name in cookies)) {
+    if(!(config.cookie_name_access_token in cookies)) {
         // Cookie not present. Redirect to authz
-        console.log(`Could not find cookie with name "${config.cookie_name}"`);
+        console.log(`Could not find cookie with name "${config.cookie_name_access_token}"`);
         return redirect_auth(config, request);
     }
 
-    const cookie_value = cookies[config.cookie_name];
-    console.log(`Found cookie with name "${config.cookie_name}"`);  // don't log value
+    const cookie_value = cookies[config.cookie_name_access_token];
+    console.log(`Found cookie with name "${config.cookie_name_access_token}"`);  // don't log value
 
     try {
         const token = await validate_token(config, cookie_value, hostname);
@@ -357,7 +356,7 @@ exports.handler = async (event, context) => {
     }
 
     // Remove access_token from Cookie:-header
-    delete cookies[config.cookie_name];
+    delete cookies[config.cookie_name_access_token];
     request.headers['cookie'] = [{'key': 'Cookie', 'value': render_cookie_header_value(cookies)}];
 
     // Pass through request

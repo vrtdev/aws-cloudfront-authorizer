@@ -50,6 +50,12 @@ auth <- cognito: id_token, access_token, refresh_token
 hnote over auth: verify id_token, issue refresh_token\naction == delegate -> redirect to delegate URL
 robrowser <- auth: 302 https://authorizer/delegate\nSet-Cookie: refresh_token=JWT{azp, exp}
 deactivate robrowser
+note <<security>> left
+exp is set to 180 days
+in the future. This limits
+the maximum delegation
+that can be given.
+end note
 
 end
 
@@ -71,8 +77,8 @@ hnote over robrowser: user selects\npermissions\nto grant
 
 robrowser -> auth: POST https://authorizer/delegate\nCookie: refresh_token=JWT{azp, exp}\nData: exp, sub, domains
 activate robrowser
-hnote over auth: verify sub non-empty\nverify domains is subset of allowed list\n(exp can be longer than refresh_token.exp)
-robrowser <- auth: 200 Grant URL:\nhttps://authorizer/authenticate?\n     grant=JWT{azp, sub, exp, scope: domains}\n<i>Access-Control-Allow-Credentials:-header NOT SET</i>
+hnote over auth: verify sub non-empty\nverify domains is subset of allowed list\n    and refresh_token\nverify exp < refresh_token.exp
+robrowser <- auth: 200 Grant URL:\nhttps://authorizer/use_grant?\n     grant=JWT{azp, sub, exp, scope: domains}\n<i>Access-Control-Allow-Credentials:-header NOT SET</i>
 deactivate robrowser
 note <<security>> left
  - Information disclosure
@@ -85,12 +91,14 @@ end note
 clbrowser <-- robrowser: <i>Deliver Grant URL</i>
 |||
 
-clbrowser -> auth: GET https://authorizer/authenticate?\n     grant=JWT{azp, sub, exp, scope}
+clbrowser -> auth: GET https://authorizer/use_grant?\n     grant=JWT{azp, sub, exp, scope}
 hnote over auth: validate JWT
-clbrowser <- auth: 200 <i><w:orange>overview of authorizations</w></i>\n     https://authorizer/authenticate?grant=<i>previous_JWT</i>\nSet-Cookie: refresh_token=<w:orange>JWT{azp, sub, exp, scope}</w>
+clbrowser <- auth: 200 <i><w:orange>overview of authorizations</w></i>\n     https://authorizer/use_grant?grant=<i>previous_JWT</i>\nSet-Cookie: refresh_token=<w:orange>JWT{azp, sub, exp, scope}</w>\nReferrer-Policy: no-referrer
 note <<security>> left
  - DoS via phishing link
     -> provide previous token
+ - Disclosure via Refer(r)er
+    -> Referrer-Policy
 end note
 
 
@@ -167,6 +175,8 @@ note <<security>> left
  - DoS via phishing link
     -> provided token must be valid
     => only reduction in `exp` can be done
+ - Disclosure via Refer(r)er
+    -> Referrer-Policy
 end note
 
 end
