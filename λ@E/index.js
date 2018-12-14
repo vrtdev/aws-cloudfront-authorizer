@@ -55,12 +55,15 @@ async function get_config_bucket(context) {
 }
 async function get_config_(context) {
     let config = {  // Default settings
-        'verify_access_url': 'https://authorizer.example.org/verify_access',
-        'cookie_name': 'authorizer_access',
-        'login_cookie_name': 'authorizer_login',
         'parameter_store_region': 'eu-west-1',
         'parameter_store_parameter_name': '/authorizer/jwt-secret',
+
         'set_cookie_path': '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220/set-cookie',
+        'set_cookie_token_param': 'token',
+        'set_cookie_location_param': 'return_to',
+        'cookie_name': 'authorizer_access',
+
+        'verify_access_url': 'https://authorizer.example.org/verify_access',
     };
     const config_bucket = await get_config_bucket(context);
     try {
@@ -271,7 +274,7 @@ exports.handler = async (event, context) => {
         const params = querystring.parse(request.querystring);
         let headers = {};
 
-        const raw_token = params['token'];  // may be undefined
+        const raw_token = params[config.set_cookie_token_param];  // may be undefined
         if(raw_token === undefined) {
             console.log("No token present");
             return bad_request();
@@ -292,12 +295,12 @@ exports.handler = async (event, context) => {
         const expire = (new Date(token['exp'] * 1000)).toUTCString();  // JavaScript works in milliseconds since epoch
         headers['set-cookie'] = [{
             key: 'Set-Cookie',
-            value: `${config.cookie_name}=${params['token']}; expires=${expire}; Path=/; Secure; HttpOnly`,
+            value: `${config.cookie_name}=${raw_token}; expires=${expire}; Path=/; Secure; HttpOnly`,
         }];
 
         let redirect_uri;
         try {
-            redirect_uri = new url.parse(params['return_to']);  // may throw TypeError on undefined
+            redirect_uri = new url.parse(params[config.set_cookie_location_param]);  // may throw TypeError on undefined
         } catch(e) {
             return internal_server_error(config, e);
         }
