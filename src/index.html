@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
     <title>Login</title>
     <style>
       @import url("https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css");
@@ -105,6 +107,7 @@
 <script type="application/javascript">
   var dateTime = new Date();
   var formSignIn = document.querySelector('.form-signin');
+  var subjectInput = formSignIn.querySelector('#subject');
   var inputExp = formSignIn.querySelector('#exp');
   var dateTimePicker = $('#datetimepicker1');
   var authorizerResponse = document.querySelector('.authorizer-response');
@@ -116,12 +119,13 @@
   formSignIn.addEventListener('submit', function (e) {
       e.preventDefault();
 
-      var formData = new URLSearchParams(new FormData(formSignIn));
+      var formDataUrlParams = 'inputExp=' + inputExp.value + '&subject=' + subjectInput.value;
+      var formDataUrlSearchParams = new URLSearchParams(formDataUrlParams);
 
       fetch('/request_access', {
           credentials: 'include',
           method: 'post',
-          body: formData
+          body: formDataUrlSearchParams
       })
               .then(function (response) {
                   if (response.status !== 200)
