@@ -68,8 +68,6 @@ adfs_metadata_url = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(adfs_metadata_url, "ADFS Metadata Url")
 
-magic_path = '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220'
-
 cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
 
 cognito_user_pool = template.add_resource(cognito.UserPool(
@@ -123,7 +121,7 @@ cognito_user_pool_client = template.add_resource(custom_resources.cognito.UserPo
         Join('', [
             'https://',
             Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
-            '/',
+            '/authenticate',
         ]),
     ],
     AllowedOAuthFlows=["code"],
@@ -297,6 +295,7 @@ template.add_resource(iam.PolicyType(
 
 common_lambda_options = {
     'Runtime': 'python3.6',
+    'Timeout': 10,  # Cold start sometimes takes longer than the default 3 seconds
     'CodeUri': serverless.S3Location('unused', Bucket=Ref(param_s3_bucket_name), Key=Ref(param_s3_key)),
     'Environment': awslambda.Environment(
         Variables={
@@ -305,7 +304,6 @@ common_lambda_options = {
             "COGNITO_CLIENT_ID": Ref(cognito_user_pool_client),
             "COGNITO_CLIENT_SECRET": GetAtt(cognito_user_pool_client, 'ClientSecret'),
             "DOMAIN_NAME": Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
-            "MAGIC_PATH": magic_path,
             "CONFIG_BUCKET": Ref(config_bucket),
         }
     ),
@@ -326,76 +324,59 @@ template.add_resource(serverless.Function(
 ))
 
 template.add_resource(serverless.Function(
-    "DomainList",
+    "Delegate",
     **common_lambda_options,
-    Handler='domain_list.handler',
+    Handler='delegate.handler',
     Events={
-        'DomainList': serverless.ApiEvent(
+        'GetDelegate': serverless.ApiEvent(
             'unused',
-            Path='/domain_list',
+            Path='/delegate',
             Method='GET',
         ),
-    },
-))
-
-template.add_resource(serverless.Function(
-    "RequestAccess",
-    **common_lambda_options,
-    Handler='request_access.handler',
-    Events={
-        'RequestAccess': serverless.ApiEvent(
+        'PostDelegate': serverless.ApiEvent(
             'unused',
-            Path='/request_access',
+            Path='/delegate',
             Method='POST',
         ),
     },
 ))
 
 template.add_resource(serverless.Function(
-    "GrantAccess",
+    "UseGrant",
     **common_lambda_options,
-    Handler='grant_access.handler',
+    Handler='use_grant.handler',
+    Events={
+        'Authenticate': serverless.ApiEvent(
+            'unused',
+            Path='/use_grant',
+            Method='GET',
+        ),
+    },
+))
+
+
+template.add_resource(serverless.Function(
+    "Authenticate",
+    **common_lambda_options,
+    Handler='authenticate.handler',
+    Events={
+        'Authenticate': serverless.ApiEvent(
+            'unused',
+            Path='/authenticate',
+            Method='GET',
+        ),
+    },
+))
+
+authorize_path = '/authorize'
+template.add_resource(serverless.Function(
+    "Authorize",
+    **common_lambda_options,
+    Handler='authorize.handler',
     Events={
         'GrantAccess': serverless.ApiEvent(
             'unused',
-            Path='/grant_access',
-            Method='GET',
-        ),
-    },
-))
-
-verify_access_path = '/verify_access'
-template.add_resource(serverless.Function(
-    "VerifyAccess",
-    **common_lambda_options,
-    Handler='verify_access.handler',
-    Events={
-        'VerifyAccess': serverless.ApiEvent(
-            'unused',
-            Path=verify_access_path,
-            Method='GET',
-        ),
-        'VerifyAccessUuid': serverless.ApiEvent(
-            'unused',
-            Path=magic_path + verify_access_path,
-            Method='GET',
-        ),
-    },
-))
-
-template.add_resource(serverless.Function(
-    "SetCookie",
-    **common_lambda_options,
-    Handler='set_cookie.handler',
-    Events={
-        'SetCookie': serverless.ApiEvent(
-            'unused',
-            Path='/set-cookie',  # easier for testing
-            Method='GET',
-        ),
-        'SetCookieUuid': serverless.ApiEvent(
-            'unused',
-            Path=magic_path + '/set-cookie',
+            Path=authorize_path,
             Method='GET',
         ),
     },
@@ -408,6 +389,7 @@ template.add_output(Output(
     Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'domain-name'])),
 ))
 
+magic_path = '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220'
 template.add_output(Output(
     "MagicPath",
     Description='Magic path',
@@ -478,15 +460,15 @@ config_object = template.add_resource(custom_resources.s3.Object(
     Bucket=Ref(config_bucket),
     Key="config.json",
     Body={  # Default settings
-        'verify_access_url': Join('', [
-            'https://',
-            Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
-            verify_access_path,
-        ]),
         'parameter_store_region': Ref(AWS_REGION),
         'parameter_store_parameter_name': jwt_secret_parameter.properties['Name'],
-        'cookie_name': 'authorizer_access',
-        'login_cookie_name': 'authorizer_login',
+
+        'authorize_url': Join('', [
+            'https://',
+            Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
+            authorize_path,
+        ]),
+        'set_cookie_path': magic_path + "/set-cookie",
     },
 ))
 

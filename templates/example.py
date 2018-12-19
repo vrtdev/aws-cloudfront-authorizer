@@ -1,4 +1,4 @@
-from troposphere import Template, cloudfront, constants, ImportValue, Sub, Join, Parameter, Ref, Output, GetAtt, \
+from troposphere import Template, cloudfront, constants, Sub, Join, Parameter, Ref, Output, GetAtt, \
     Equals, AWS_NO_VALUE, If, route53, FindInMap, AWS_REGION
 import custom_resources.acm
 import custom_resources.cloudformation
@@ -9,14 +9,6 @@ import cfnutils.output
 template = Template()
 
 custom_resources.use_custom_resources_stack_name_parameter(template)
-
-authorizer_stack = template.add_parameter(Parameter(
-    "AuthorizerStack",
-    Type=constants.STRING,
-    Default="authorizer",
-    Description="Authorizer stack to import from",
-))
-template.set_parameter_label(authorizer_stack, "Authorizer stack")
 
 param_authorizer_lae_arn = template.add_parameter(Parameter(
     "AuthorizerLaeParam",
@@ -89,39 +81,12 @@ example_distribution = template.add_resource(cloudfront.Distribution(
                     OriginSSLProtocols=['TLSv1.2', 'TLSv1.1', 'TLSv1']
                 ),
             ),
-            cloudfront.Origin(
-                # You need to add this origin
-                Id="Authorizer",
-                DomainName=ImportValue(Sub('${' + authorizer_stack.title + '}-domain-name')),
-                CustomOriginConfig=cloudfront.CustomOrigin(
-                    HTTPPort=80,
-                    HTTPSPort=443,
-                    OriginProtocolPolicy='https-only',
-                    OriginSSLProtocols=['TLSv1.2', 'TLSv1.1', 'TLSv1']
-                ),
-            ),
         ],
         CacheBehaviors=[
-            cloudfront.CacheBehavior(
-                # The authorizer hijacks a set of URL-paths from your website. All paths are prefixed
-                # with `/auth-<UUID>/`, so they are very unlikely to collide with your content.
-                # Insert this as the first Behaviour.
-                PathPattern=Join('', [
-                    ImportValue(Sub('${' + authorizer_stack.title + '}-magic-path')),
-                    '/*',
-                ]),
-                ViewerProtocolPolicy='https-only',
-                TargetOriginId='Authorizer',
-                ForwardedValues=cloudfront.ForwardedValues(
-                    QueryString=True,
-                    Cookies=cloudfront.Cookies(
-                        Forward='all',  # Needed to allow Set-Cookie:-headers
-                    ),
-                ),
-                MinTTL=0,
-                DefaultTTL=0,
-                MaxTTL=0,
-            )
+            # If you have additional cache behaviours,
+            # make sure that (at least) the behaviour matching
+            # /auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220/set-cookie
+            # has the Lambda-function associated.
         ],
         DefaultCacheBehavior=cloudfront.DefaultCacheBehavior(
             ViewerProtocolPolicy='redirect-to-https',  # HTTPS required. Cookies need to be sent securely
