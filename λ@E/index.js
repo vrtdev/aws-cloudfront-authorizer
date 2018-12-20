@@ -300,8 +300,8 @@ exports.handler = async (event, context) => {
         try {
             token = await validate_token(config, raw_token, hostname);  // may throw
             const now = (new Date()) / 1000;
-            if(token['iat'] < (now - 30)) {
-                console.log("Token is issued more than 30 seconds ago")
+            if(token['iat'] < (now - 30) || token['iat'] > (now + 30)) {
+                console.log("Token is issued more than 30 seconds from now");
                 return bad_request(config, request);
             }
         } catch(e) {
