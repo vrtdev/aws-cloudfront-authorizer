@@ -55,6 +55,8 @@ async function get_config_bucket(context) {
 }
 async function get_config_(context) {
     let config = {  // Default settings, keep in sync with Lambda-code!
+        'function_arn': context['invokedFunctionArn'],
+
         'parameter_store_region': 'eu-west-1',
         'parameter_store_parameter_name': '/authorizer/jwt-secret',
 
@@ -219,7 +221,12 @@ function bad_request(config, request) {
     return {
         status: 400,
         statusDescription: 'Bad Request',
-        headers: {},
+        headers: {
+            'x-served-by': [{
+                key: 'X-Served-By',
+                value: config.function_arn,
+            }],
+        },
         bodyEncoding: 'text',
         body: 'Bad request',
     };
@@ -238,6 +245,10 @@ function redirect_auth(config, request) {
         status: '302',
         statusDescription: 'Found',
         headers: {
+            'x-served-by': [{
+                key: 'X-Served-By',
+                value: config.function_arn,
+            }],
             'location': [{
                 key: 'Location',
                 value: `${config.authorize_url}?` +
@@ -254,6 +265,12 @@ function internal_server_error(config, exception) {
     return {
         status: '500',
         statusDescription: 'Internal Server Error',
+        headers: {
+            'x-served-by': [{
+                key: 'X-Served-By',
+                value: config.function_arn,
+            }],
+        },
         bodyEncoding: 'text',
         body: exception.toString(),  // TODO: replace this with:   body: 'Something went wrong...',
     };
@@ -322,6 +339,11 @@ exports.handler = async (event, context) => {
             key: 'Referrer-Policy',
             value: 'no-referrer',
         }];
+
+        headers['x-served-by'] = [{
+                key: 'X-Served-By',
+                value: config.function_arn,
+            }];
 
         console.log(`Issuing redirect to ${redirect_uri.href}, with Set-Cookie:-header`);
         return {
