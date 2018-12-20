@@ -78,7 +78,7 @@ hnote over robrowser: user selects\npermissions\nto grant
 robrowser -> auth: POST https://authorizer/delegate\nCookie: refresh_token=JWT{azp, exp}\nData: exp, sub, domains
 activate robrowser
 hnote over auth: verify sub non-empty\nverify domains is subset of allowed list\n    and refresh_token\nverify exp < refresh_token.exp
-robrowser <- auth: 200 Grant URL:\nhttps://authorizer/use_grant?\n     grant=JWT{azp, sub, exp, scope: domains}\n<i>Access-Control-Allow-Credentials:-header NOT SET</i>
+robrowser <- auth: 200 Grant Token:\nJWT{azp, sub, exp, scope: domains}\n<i>Access-Control-Allow-Credentials:-header NOT SET</i>
 deactivate robrowser
 note <<security>> left
  - Information disclosure

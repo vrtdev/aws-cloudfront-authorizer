@@ -293,7 +293,7 @@ exports.handler = async (event, context) => {
         const raw_token = params['access_token'];  // may be undefined
         if(raw_token === undefined) {
             console.log("No token present");
-            return bad_request();
+            return bad_request(config, request);
         }
 
         let token;
@@ -302,11 +302,11 @@ exports.handler = async (event, context) => {
             const now = (new Date()) / 1000;
             if(token['iat'] < (now - 30)) {
                 console.log("Token is issued more than 30 seconds ago")
-                return bad_request();
+                return bad_request(config, request);
             }
         } catch(e) {
             console.log("Token not valid");
-            return bad_request();
+            return bad_request(config, request);
         }
         const expire = (new Date(token['exp'] * 1000)).toUTCString();  // JavaScript works in milliseconds since epoch
         headers['set-cookie'] = [{
@@ -322,7 +322,7 @@ exports.handler = async (event, context) => {
         }
         if(redirect_uri.hostname !== hostname) {
             console.log(`Token not valid for ${hostname}`);
-            return bad_request();
+            return bad_request(config, request);
         }
         headers['location'] = [{
             key: 'Location',
