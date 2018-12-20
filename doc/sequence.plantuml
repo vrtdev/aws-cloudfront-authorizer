@@ -94,6 +94,13 @@ clbrowser <-- robrowser: <i>Deliver Grant URL</i>
 clbrowser -> auth: GET https://authorizer/use_grant?\n     grant=JWT{azp, sub, exp, scope}
 hnote over auth: validate JWT
 clbrowser <- auth: 200 <i><w:orange>overview of authorizations</w></i>\n     https://authorizer/use_grant?grant=<i>previous_JWT</i>\nSet-Cookie: refresh_token=<w:orange>JWT{azp, sub, exp, scope}</w>\nReferrer-Policy: no-referrer
+note <<security>> right
+Convert Grant-token to refresh token.
+In the future, grant-tokens could be
+UUIDs referencing a database entry,
+so Grants can be revoked/rescoped
+after they are given
+end note
 note <<security>> left
  - DoS via phishing link
     -> provide previous token
@@ -158,6 +165,12 @@ activate clbrowser
 hnote over auth: Validate refresh_token\nCheck redirect_uri allowed domain\nOK => issue access_token for domain
 clbrowser <- auth: 302 https://<w:orange>restricted</w>/auth-UUID/set-cookie?\n     access_token=JWT{azp, sub, exp, scope: domain}&\n     redirect_uri=<w:orange>https%3a%2f%2frestricted</w><w:red>%2fwhatever</w>
 deactivate clbrowser
+note <<security>> right
+Re-sign the refresh-token into a limited scope
+access-token. If the restricted site somehow
+leaks the access-token, it can't be used to
+access any other site.
+end note
 note <<security>> left
  - open redirect
     -> domain is listed in JWT
@@ -168,7 +181,7 @@ end note
 
 clbrowser -> protcf: GET https://restricted/auth-UUID/set-cookie?\n     access_token=JWT{azp, sub, exp, scope}&\n     redirect_uri=https%3a%2f%2frestricted%2fwhatever
 activate clbrowser
-hnote over protcf: λ@E Viewer Request:\nverify if access_token is valid for domain `restricted`\nconvert query parameter to Set-Cookie\nissue redirect
+hnote over protcf: λ@E Viewer Request:\nverify if access_token is valid for domain `restricted`\nverify it access_token is recently issued\nconvert query parameter to Set-Cookie\nissue redirect
 clbrowser <- protcf: 302 <w:orange>https://restricted</w><w:red>/whatever</w>\nSet-Cookie: access_token=<w:orange>JWT{azp, sub, exp, scope}</w>\nReferrer-Policy: no-referrer
 deactivate clbrowser
 note <<security>> left
