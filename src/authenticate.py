@@ -1,6 +1,7 @@
 import os
 import time
 import traceback
+import urllib.parse
 
 import jwt
 import requests
@@ -148,7 +149,7 @@ def handler(event, context) -> dict:
             location = f"https://{os.environ['DOMAIN_NAME']}/delegate"
         elif state['action'] == 'authorize':
             location = f"https://{os.environ['DOMAIN_NAME']}/authorize?" + \
-                f"redirect_uri={state['redirect_uri']}"
+                f"redirect_uri={urllib.parse.quote_plus(state['redirect_uri'])}"
         else:
             raise ValueError(f"Invalid action `{state['action']}`")
     except (KeyError, ValueError) as e:
