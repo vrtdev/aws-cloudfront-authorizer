@@ -272,7 +272,7 @@ function internal_server_error(config, exception) {
             }],
         },
         bodyEncoding: 'text',
-        body: exception.toString(),  // TODO: replace this with:   body: 'Something went wrong...',
+        body: 'Something went wrong...',
     };
 }
 
