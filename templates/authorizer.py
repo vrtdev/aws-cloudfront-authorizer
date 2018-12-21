@@ -2,7 +2,7 @@
 Authorizer stack.
 """
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
-    Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3
+    Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3, If
 import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
@@ -60,6 +60,19 @@ param_use_cert = template.add_parameter(Parameter(
     Description="Use TLS certificate"
 ))
 template.set_parameter_label(param_use_cert, "Use TLS certificate")
+
+param_auto_use_adfs = template.add_parameter(Parameter(
+    "AutoUseAdfs",
+    Type=constants.STRING,
+    Description="autoselect ADFS for Cognito authentication",
+    AllowedValues=['yes', 'no'],
+    Default='yes',
+))
+
+AUTO_USE_ADFS = template.add_condition(
+    "AutoUseAdfsCond",
+    Equals(Ref(param_auto_use_adfs), 'yes')
+)
 
 adfs_metadata_url = template.add_parameter(Parameter(
     "AdfsMetadataUrl",
@@ -303,6 +316,7 @@ common_lambda_options = {
             "COGNITO_DOMAIN_PREFIX": GetAtt(cognito_user_pool_domain, 'Domain'),
             "COGNITO_CLIENT_ID": Ref(cognito_user_pool_client),
             "COGNITO_CLIENT_SECRET": GetAtt(cognito_user_pool_client, 'ClientSecret'),
+            "COGNITO_ADFS_IDP_NAME": If(AUTO_USE_ADFS, adfs_provider_name, 'COGNITO'),
             "DOMAIN_NAME": Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
             "CONFIG_BUCKET": Ref(config_bucket),
         }

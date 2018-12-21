@@ -177,8 +177,9 @@ def cognito_url(state: str = '') -> str:
     client_id = os.environ['COGNITO_CLIENT_ID']
     redirect_uri = f"https://{os.environ['DOMAIN_NAME']}/authenticate"
 
-    location = f"https://{domain_prefix}.auth.{region}.amazoncognito.com/login?" + \
+    location = f"https://{domain_prefix}.auth.{region}.amazoncognito.com/authorize?" + \
            urlencode({
+               'identity_provider': os.environ['COGNITO_ADFS_IDP_NAME'],
                'response_type': 'code',
                'client_id': client_id,
                'redirect_uri': redirect_uri,
