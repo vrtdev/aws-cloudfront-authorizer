@@ -136,7 +136,7 @@ present, the browser is redirected to the authorizer domain to check the
 
 In order to do this Cookie-QueryParameter-Cookie dance, we need to hijack at
 least one URL from the protected domain. This does change the observable
-behaviour, but by choosing `/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220`,
+behaviour, but by choosing `/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220/set-cookie`,
 it's unlikely to actually impact the site.
 
 
@@ -151,10 +151,12 @@ API-gateway. Authentication happens via [Cognito], which leverages our existing
 [ADFS]: https://en.wikipedia.org/wiki/Active_Directory_Federation_Services
 [Cognito]: https://aws.amazon.com/cognito/
 
-Once a user is authenticated, they can select which protected domains they want
-access to, and specify an expiration time. The result is an URL with a signed
-copy of the requested parameters. This URL represents the given access, and can
-be passed on to third parties.
+Once a user is authenticated, they can either authorize themselves
+(automatically), or choose to delegate their access to a third party. This
+delegation works by selecting which protected domains they want to give
+access to, and by specifying an expiration time. The result is an URL with a
+signed copy of the requested parameters. This URL represents the given access,
+and can be passed on to third parties.
 
 ![Login dialogue](login-page.png)
 
