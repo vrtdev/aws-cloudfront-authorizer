@@ -1,6 +1,11 @@
 -r src/requirements.txt
 invoke
-troposphere>=2.3.4
+
+# Troposphere broke API with minor version upgrade:
+#  https://github.com/cloudtools/troposphere/commit/5b7e4141ab6913becbb9cdfb5dfa7f5fc7699d9d#diff-eddd966290f61c60814712506aa77125L76
+# Pin on 2.4 to be safe
+troposphere==2.4.*
+
 flake8
 git+https://github.com/vrtdev/custom-resources.git@master#egg=custom-resources
 git+https://github.com/vrtdev/aws-cloudformation-utils.git@master#egg=aws-cloudformation-utils
