@@ -1,5 +1,4 @@
-import base64
-import functools
+from datetime import datetime
 import json
 import os
 import sys
@@ -14,6 +13,58 @@ import structlog
 
 DOMAIN_KEY = 'domains.json'
 CONFIG_KEY = 'config.json'
+
+
+def cache_with_maxage(
+        maybe_func=None,
+        default_max_age: int = 60,
+):
+    """
+    Decorator to make a function reuse previous return values up to a certain
+    amount of time in the future.
+
+    This is similar to functools.lru_cache, with the following differences:
+    * This decorator ignores all arguments!!!
+    * An additional (optional) keyword argument is added: `max_age`.
+      If it is specified (and not None), it signifies the maximum age (in
+      seconds) of cache to use.
+    """
+    class CachedFunction:
+        def __init__(self, func):
+            self._func = func
+            self._default_max_age = default_max_age
+            self._cache_timestamp = None
+            self._cache = None
+
+        def __call__(self, *args, **kwargs):
+            max_age = kwargs.get('max_age')
+            if max_age is None:
+                max_age = self._default_max_age
+            try:
+                del kwargs['max_age']
+            except KeyError:
+                pass
+
+            now = datetime.utcnow().timestamp()
+            min_timestamp = now - max_age
+
+            if self._cache_timestamp is None or \
+                    self._cache_timestamp < min_timestamp:
+                self._cache = self._func(*args, **kwargs)
+                self._cache_timestamp = now
+
+            return self._cache
+
+        def clear_cache(self):
+            self._cache_timestamp = None
+            self._cache = None
+
+    # maybe_cls's type depends on the usage of the decorator.  It's the function
+    # if it's used as `@decorator` but ``None`` if used as `@decorator()`.
+    if maybe_func is None:
+        return CachedFunction
+    else:
+        return CachedFunction(maybe_func)
 
 
 class Config:
@@ -32,7 +83,7 @@ class Config:
                 setattr(self, attr, settings_dict[attr])
 
 
-@functools.lru_cache(maxsize=1)
+@cache_with_maxage(default_max_age=60)
 def get_config() -> Config:
     c = Config()
     try:
@@ -51,7 +102,7 @@ def get_config() -> Config:
     return c
 
 
-@functools.lru_cache(maxsize=1)
+@cache_with_maxage(default_max_age=60)
 def get_jwt_secret() -> str:
     # Don't do this at the module level
     # That would make running tests with Mocked SSM much harder
@@ -121,7 +172,7 @@ def generate_cookie(key: str, value: str, max_age: int = None, path: str = None)
     return cookie.OutputString()
 
 
-@functools.lru_cache(maxsize=1)
+@cache_with_maxage(default_max_age=60)
 def get_domains():
     try:
         s3_client = boto3.client('s3')
