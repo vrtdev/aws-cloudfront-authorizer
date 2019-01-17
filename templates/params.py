@@ -4,7 +4,7 @@ Authorizer parameter stack.
 This stack gathers the information needed to use the Authorizer in one place.
 """
 from troposphere import Template, Parameter, Ref, Sub, Output, Export, Join, AWS_STACK_NAME, constants, \
-    GetAtt
+    GetAtt, ImportValue
 import custom_resources.ssm
 import custom_resources.cloudformation
 import cfnutils.output
@@ -48,5 +48,11 @@ template.add_output(Output(
     Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'lae-arn'])),
 ))
 
+template.add_output(Output(
+    "DomainTable",
+    Description='DynamoDB table containing the authorized domains',
+    Value=ImportValue(Join('-', [Ref(param_authorizer_stack), "DomainTable"])),
+    Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'DomainTable'])),
+))
 
 cfnutils.output.write_template_to_file(template)

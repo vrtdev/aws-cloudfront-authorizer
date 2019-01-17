@@ -155,7 +155,7 @@ template.add_output(Output(
 ))
 
 domain_table = template.add_resource(dynamodb.Table(
-    "DomainDb",
+    "DomainTable",
     BillingMode="PAY_PER_REQUEST",
     AttributeDefinitions=[
         dynamodb.AttributeDefinition(
@@ -171,9 +171,10 @@ domain_table = template.add_resource(dynamodb.Table(
     ],
 ))
 template.add_output(Output(
-    "DomainDbName",
+    "DomainTableName",
     Description="DynamoDB table for domains",
     Value=Ref(domain_table),
+    Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'DomainTable'])),
 ))
 
 lambda_role = template.add_resource(iam.Role(
