@@ -76,6 +76,7 @@ class Config:
         self.set_cookie_path = '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220/set-cookie'
 
         self.cookie_name_refresh_token = 'refresh_token'
+        self.domain_table = "domains"
 
     def update(self, settings_dict: dict):
         for attr in vars(self).keys():
@@ -100,6 +101,19 @@ def get_config() -> Config:
         print(f"s3.GetObject(Bucket={bucket}, Key={CONFIG_KEY}) failed, continuing with defaults:")
         traceback.print_exception(type(e), e, e.__traceback__, file=sys.stdout)
     return c
+
+
+dynamodb_client = boto3.client('dynamodb')
+
+
+def is_allowed_domain(domain) -> bool:
+    table_entry = dynamodb_client.get_item(
+        TableName=get_config().domain_table,
+        Key={
+            "domain": {"S": domain},
+        },
+    )
+    return table_entry.get('Item', {}).get('domain', {}).get('S') == domain
 
 
 @cache_with_maxage(default_max_age=60)
@@ -170,26 +184,6 @@ def generate_cookie(key: str, value: str, max_age: int = None, path: str = None)
     if path is not None:
         cookie['path'] = path
     return cookie.OutputString()
-
-
-@cache_with_maxage(default_max_age=60)
-def get_domains():
-    try:
-        s3_client = boto3.client('s3')
-        response = s3_client.get_object(
-            Bucket=os.environ['CONFIG_BUCKET'],
-            Key=DOMAIN_KEY,
-        )
-        body = response['Body'].read()
-        domains = json.loads(body)
-    except Exception as e:
-        structlog.get_logger().msg("S3.GetObject() failed, rendering default domain list", exception=e)
-        domains = [
-            "stag.example.org",
-            "images-stag.example.org",
-            f"<put a JSON array at s3://{os.environ['CONFIG_BUCKET']}/{DOMAIN_KEY} to change this list>"
-        ]
-    return domains
 
 
 def bad_request(public_details: str = '', private_details=None) -> dict:

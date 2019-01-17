@@ -5,7 +5,7 @@ import jwt
 import structlog
 
 from utils import get_config, bad_request, get_access_token_jwt_secret, redirect_to_cognito, NotLoggedIn, BadRequest, \
-    InternalServerError, internal_server_error, get_refresh_token, get_state_jwt_secret, get_domains
+    InternalServerError, internal_server_error, get_refresh_token, get_state_jwt_secret, is_allowed_domain
 
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
 
@@ -38,7 +38,8 @@ def handler(event, context) -> dict:
     except InternalServerError as e:
         return internal_server_error('', e)
 
-    if redirect_uri_comp.netloc not in get_domains():
+    # Is this domain allowed?
+    if not is_allowed_domain(redirect_uri_comp.netloc):
         return bad_request('', f"{redirect_uri} is not an allowed domain")
 
     if 'domains' in refresh_token:  # delegated token with domain restrictions

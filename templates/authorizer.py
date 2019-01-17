@@ -2,7 +2,7 @@
 Authorizer stack.
 """
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
-    Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3, If
+    Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3, If, dynamodb
 import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
@@ -154,6 +154,28 @@ template.add_output(Output(
     Value=Ref(config_bucket),
 ))
 
+domain_table = template.add_resource(dynamodb.Table(
+    "DomainDb",
+    BillingMode="PAY_PER_REQUEST",
+    AttributeDefinitions=[
+        dynamodb.AttributeDefinition(
+            AttributeName="domain",
+            AttributeType="S",
+        )
+    ],
+    KeySchema=[
+        dynamodb.KeySchema(
+            AttributeName="domain",
+            KeyType="HASH",
+        )
+    ],
+))
+template.add_output(Output(
+    "DomainDbName",
+    Description="DynamoDB table for domains",
+    Value=Ref(domain_table),
+))
+
 lambda_role = template.add_resource(iam.Role(
     "LambdaRole",
     Path="/",
@@ -204,10 +226,19 @@ lambda_role = template.add_resource(iam.Role(
                             "s3:GetObject",
                         ],
                         "Resource": Join('', ["arn:aws:s3:::", Ref(config_bucket), "/*"]),
-                    }
+                    },
+                    {
+                        # Read DynamoDB
+                        "Effect": "Allow",
+                        "Action": [
+                            "dynamodb:GetItem",
+                            "dynamodb:Scan",
+                        ],
+                        "Resource": GetAtt(domain_table, "Arn"),
+                    },
 
                     # KMS permissions are defined on the key
-                    # Parameter store permissions are added below to prevent dependency cirlce
+                    # Parameter store permissions are added below to prevent dependency circle
                     # (ldap_key -> ldap_role -> parameter -> ldap_key)
                 ],
             },
@@ -483,6 +514,7 @@ config_object = template.add_resource(custom_resources.s3.Object(
             authorize_path,
         ]),
         'set_cookie_path': magic_path + "/set-cookie",
+        'domain_table': Ref(domain_table),
     },
 ))
 

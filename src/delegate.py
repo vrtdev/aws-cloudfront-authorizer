@@ -8,8 +8,8 @@ import jwt
 import structlog
 
 from utils import redirect_to_cognito, get_refresh_token, NotLoggedIn, BadRequest, \
-    bad_request, InternalServerError, internal_server_error, get_domains, \
-    get_grant_jwt_secret, get_state_jwt_secret
+    bad_request, InternalServerError, internal_server_error, \
+    get_grant_jwt_secret, get_state_jwt_secret, get_config, is_allowed_domain, dynamodb_client
 
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
 
@@ -41,7 +41,14 @@ def handler(event, context) -> dict:
             # User wants to further narrow his access
             domains = refresh_token['domains']
         else:
-            domains = get_domains()
+            domains = []
+            scan_paginator = dynamodb_client.get_paginator('scan')
+            response_iterator = scan_paginator.paginate(
+                TableName=get_config().domain_table,
+            )
+            for page in response_iterator:
+                for domain_entry in page['Items']:
+                    domains.append(domain_entry['domain']['S'])
 
         with open(os.path.join(os.path.dirname(__file__), 'delegate.html')) as f:
             html = f.read()
@@ -80,8 +87,8 @@ def handler(event, context) -> dict:
             if not re.match(r'^[a-zA-Z0-9.-]+$', domain):
                 return bad_request('', f"`{domain}` does not look like a domain name")
 
-        if not domains.issubset(get_domains()):
-            return bad_request('', 'Unknown domain in request')
+            if not is_allowed_domain(domain):
+                return bad_request('', 'Unknown domain in request')
 
         if 'domains' in refresh_token:
             if not domains.issubset(refresh_token['domains']):
