@@ -113,6 +113,7 @@
 
 <script type="application/javascript">
     var domains = {{{domains}}};  // This will be substituted with an array of strings by the Python code when being served
+    var groups = {{{groups}}};  // This will be substituted with an object like {"group name": ["domain1", "domain2"]}
     var use_grant_url = {{{use_grant_url}}};  // This will be substituted a string
 
     var div = document.getElementById('domains');

@@ -40,6 +40,7 @@ def handler(event, context) -> dict:
         if 'domains' in refresh_token:
             # User wants to further narrow his access
             domains = refresh_token['domains']
+            groups = {}
         else:
             domains = []
             scan_paginator = dynamodb_client.get_paginator('scan')
@@ -50,9 +51,18 @@ def handler(event, context) -> dict:
                 for domain_entry in page['Items']:
                     domains.append(domain_entry['domain']['S'])
 
+            groups = {}
+            response_iterator = scan_paginator.paginate(
+                TableName=get_config().group_table,
+            )
+            for page in response_iterator:
+                for group_entry in page['Items']:
+                    groups[group_entry['group']['S']] = group_entry['domains']['SS']
+
         with open(os.path.join(os.path.dirname(__file__), 'delegate.html')) as f:
             html = f.read()
             html = html.replace('{{{domains}}}', json.dumps(domains)) \
+                       .replace('{{{groups}}}', json.dumps(groups)) \
                        .replace('{{{use_grant_url}}}', json.dumps(f"https://{os.environ['DOMAIN_NAME']}/use_grant?grant="))
 
 

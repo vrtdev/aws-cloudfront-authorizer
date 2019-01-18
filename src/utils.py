@@ -77,6 +77,7 @@ class Config:
 
         self.cookie_name_refresh_token = 'refresh_token'
         self.domain_table = "domains"
+        self.group_table = "groups"
 
     def update(self, settings_dict: dict):
         for attr in vars(self).keys():
