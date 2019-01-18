@@ -78,6 +78,11 @@
     </div>
 
     <fieldset class="form-group">
+        <legend>Groups</legend>
+        <div id="groups"></div>
+    </fieldset>
+
+    <fieldset class="form-group">
         <legend>Domains</legend>
         <div id="domains"></div>
     </fieldset>
@@ -116,21 +121,89 @@
     var groups = {{{groups}}};  // This will be substituted with an object like {"group name": ["domain1", "domain2"]}
     var use_grant_url = {{{use_grant_url}}};  // This will be substituted a string
 
-    var div = document.getElementById('domains');
-    for (var domain in domains) {
+    var group_elements = {};
+    var domain_elements = {};
+
+    function sync_group_to_domain() {
+        for(var domain in domain_elements) {
+            domain_elements[domain].checked = false;
+        }
+        for(var group in group_elements) {
+            if( group_elements[group].checked ) {
+                for(var domain_index in groups[group]) {
+                    var domain = groups[group][domain_index];
+                    domain_elements[domain].checked = true;
+                }
+            }
+        }
+    }
+
+    function sync_domain_to_group() {
+        for(var group in group_elements) {
+            var all_checked = true;
+            for(var domain_index in groups[group]) {
+                var domain = groups[group][domain_index];
+                if( domain in domain_elements && ! domain_elements[domain].checked ) {
+                    all_checked = false;
+                }
+            }
+            group_elements[group].checked = all_checked
+        }
+    }
+
+    var div = document.getElementById('groups');
+    var sorted_groups = Object.keys(groups).sort();
+    for (var group_index in sorted_groups) {
+        var group = sorted_groups[group_index];
         var container = document.createElement('div');
         container.className = 'form-check';
 
         var label = document.createElement('label');
         label.className = "form-check-label";
-        label.setAttribute("for", domains[domain]);
 
         var el = document.createElement('input');
+        el.name = ""; // Set no name; won't submit
+        el.className = "form-check-input";
+        el.type = "checkbox";
+        el.setAttribute("group-name", group);
+        group_elements[group] = el;
+        el.onchange = function(event) {
+            /* No matter which Group got changed, read the current group-settings,
+             * and mirror that to the domain elements.
+             */
+            sync_group_to_domain();
+            sync_domain_to_group();  // check for additional groups that are included by this group
+        };
+
+        label.appendChild(el);
+        label.appendChild(document.createTextNode(group));
+        container.appendChild(label);
+        div.appendChild(container);
+    }
+
+    div = document.getElementById('domains');
+    for (var domain in domains) {
+        container = document.createElement('div');
+        container.className = 'form-check';
+
+        label = document.createElement('label');
+        label.className = "form-check-label";
+        label.setAttribute("for", domains[domain]);
+
+        el = document.createElement('input');
         el.setAttribute("id", domains[domain]);
         el.name = domains[domain];
         el.className = "form-check-input";
         el.type = "checkbox";
         //el.checked = "checked";
+        domain_elements[domains[domain]] = el;
+        el.onchange = function(event) {
+            /* No matter which Domain got changed, read the current domain-settings,
+             * and mirror that to the group elements.
+             */
+            sync_domain_to_group();
+        };
+
         label.appendChild(document.createTextNode(domains[domain]));
         container.appendChild(el);
         container.appendChild(label);
