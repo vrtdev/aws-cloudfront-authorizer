@@ -78,6 +78,15 @@ template.add_resource(custom_resources.dynamodb.Item(
     ItemKey={"domain": {"S": domain_name}},
 ))
 
+# Create an entry in the group-table
+template.add_resource(custom_resources.dynamodb.Item(
+    "AuthorizedDomainExampleGroup",
+    TableName=ImportValue(Join('-', [Ref(param_authorizer_param_stack), "GroupTable"])),
+    ItemKey={"group": {"S": "Example Group"}},
+    ItemValue={"domains": {"SS": [domain_name]}},
+))
+
+
 example_distribution = template.add_resource(cloudfront.Distribution(
     "ExampleDistribution",
     DistributionConfig=cloudfront.DistributionConfig(

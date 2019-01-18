@@ -55,4 +55,11 @@ template.add_output(Output(
     Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'DomainTable'])),
 ))
 
+template.add_output(Output(
+    "GroupTable",
+    Description='DynamoDB table containing the groups of authorized domains',
+    Value=ImportValue(Join('-', [Ref(param_authorizer_stack), "GroupTable"])),
+    Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'GroupTable'])),
+))
+
 cfnutils.output.write_template_to_file(template)

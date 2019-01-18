@@ -177,6 +177,29 @@ template.add_output(Output(
     Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'DomainTable'])),
 ))
 
+group_table = template.add_resource(dynamodb.Table(
+    "GroupTable",
+    BillingMode="PAY_PER_REQUEST",
+    AttributeDefinitions=[
+        dynamodb.AttributeDefinition(
+            AttributeName="group",
+            AttributeType="S",
+        )
+    ],
+    KeySchema=[
+        dynamodb.KeySchema(
+            AttributeName="group",
+            KeyType="HASH",
+        )
+    ],
+))
+template.add_output(Output(
+    "GroupTableName",
+    Description="DynamoDB table for groups",
+    Value=Ref(group_table),
+    Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'GroupTable'])),
+))
+
 lambda_role = template.add_resource(iam.Role(
     "LambdaRole",
     Path="/",
@@ -235,7 +258,10 @@ lambda_role = template.add_resource(iam.Role(
                             "dynamodb:GetItem",
                             "dynamodb:Scan",
                         ],
-                        "Resource": GetAtt(domain_table, "Arn"),
+                        "Resource": [
+                            GetAtt(domain_table, "Arn"),
+                            GetAtt(group_table, "Arn"),
+                        ],
                     },
 
                     # KMS permissions are defined on the key
@@ -516,6 +542,7 @@ config_object = template.add_resource(custom_resources.s3.Object(
         ]),
         'set_cookie_path': magic_path + "/set-cookie",
         'domain_table': Ref(domain_table),
+        'group_table': Ref(group_table),
     },
 ))
 
