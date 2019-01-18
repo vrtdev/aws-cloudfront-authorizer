@@ -1,7 +1,8 @@
 from troposphere import Template, cloudfront, constants, Sub, Join, Parameter, Ref, Output, GetAtt, \
-    Equals, AWS_NO_VALUE, If, route53, FindInMap, AWS_REGION
+    Equals, AWS_NO_VALUE, If, route53, FindInMap, AWS_REGION, ImportValue
 import custom_resources.acm
 import custom_resources.cloudformation
+import custom_resources.dynamodb
 import cfnutils.mappings
 import cfnutils.output
 
@@ -9,6 +10,13 @@ import cfnutils.output
 template = Template()
 
 custom_resources.use_custom_resources_stack_name_parameter(template)
+
+param_authorizer_param_stack = template.add_parameter(Parameter(
+    "AuthorizerParamStackParam",
+    Type=constants.STRING,
+    Default="authorizer-params",
+    Description="StackName of the Params stack",
+))
 
 param_authorizer_lae_arn = template.add_parameter(Parameter(
     "AuthorizerLaeParam",
@@ -46,10 +54,12 @@ template.set_parameter_label(param_use_cert, "Use TLS certificate")
 
 cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
 
+domain_name = Join('.', [Ref(param_label), Ref(param_hosted_zone_name)])
+
 acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCertificate(
     "AcmCert",
     Region='us-east-1',  # Api gateway is in us-east-1
-    DomainName=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
+    DomainName=domain_name,
     Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 template.add_output(Output(
@@ -60,11 +70,19 @@ template.add_output(Output(
 use_cert_cond = 'UseCert'
 template.add_condition(use_cert_cond, Equals(Ref(param_use_cert), 'yes'))
 
+
+# Create an entry in the domain-table, so this domain is listed in the Authorizer
+template.add_resource(custom_resources.dynamodb.Item(
+    "AuthorizedDomain",
+    TableName=ImportValue(Join('-', [Ref(param_authorizer_param_stack), "DomainTable"])),
+    ItemKey={"domain": {"S": domain_name}},
+))
+
 example_distribution = template.add_resource(cloudfront.Distribution(
     "ExampleDistribution",
     DistributionConfig=cloudfront.DistributionConfig(
         Comment="Example distribution for restricted access",
-        Aliases=[Join('.', [Ref(param_label), Ref(param_hosted_zone_name)])],
+        Aliases=[domain_name],
         Enabled=True,
         IPV6Enabled=True,
         HttpVersion='http2',
@@ -125,7 +143,7 @@ template.add_resource(route53.RecordSetType(
     ),
     Comment=Sub('DNS for ${AWS::StackName}'),
     HostedZoneName=Join('', [Ref(param_hosted_zone_name), '.']),
-    Name=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
+    Name=domain_name,
     Type='A',
 ))
 template.add_resource(route53.RecordSetType(
@@ -136,7 +154,7 @@ template.add_resource(route53.RecordSetType(
     ),
     Comment=Sub('DNS for ${AWS::StackName}'),
     HostedZoneName=Join('', [Ref(param_hosted_zone_name), '.']),
-    Name=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
+    Name=domain_name,
     Type='AAAA',
 ))
 
