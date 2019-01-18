@@ -182,21 +182,42 @@
     }
 
     div = document.getElementById('domains');
-    for (var domain in domains) {
+
+    function domain_sort(a, b) {
+        var aa = a.split('.').reverse();
+        var ba = b.split('.').reverse();
+        while(true) {
+            var cur_a = aa.shift();
+            var cur_b = ba.shift();
+            if(cur_a === undefined && cur_b === undefined) return 0;
+            if(cur_a === undefined) {
+                // b is a subdomain of a; sort a before b
+                return -1; // a < b
+            }
+            if(cur_b === undefined) {
+                // a is a subdomain of b; sort b before a
+                return 1; // a > b
+            }
+            if(cur_a < cur_b) return -1;
+            if(cur_a > cur_b) return 1;
+        }
+    }
+    var sorted_domains = domains.sort(domain_sort);
+
+    for (var domain_index in sorted_domains) {
+        var domain = sorted_domains[domain_index];
         container = document.createElement('div');
         container.className = 'form-check';
 
         label = document.createElement('label');
         label.className = "form-check-label";
-        label.setAttribute("for", domains[domain]);
 
         el = document.createElement('input');
-        el.setAttribute("id", domains[domain]);
-        el.name = domains[domain];
+        el.name = domain;
         el.className = "form-check-input";
         el.type = "checkbox";
         //el.checked = "checked";
-        domain_elements[domains[domain]] = el;
+        domain_elements[domain] = el;
         el.onchange = function(event) {
             /* No matter which Domain got changed, read the current domain-settings,
              * and mirror that to the group elements.
@@ -204,8 +225,8 @@
             sync_domain_to_group();
         };
 
-        label.appendChild(document.createTextNode(domains[domain]));
-        container.appendChild(el);
+        label.appendChild(el);
+        label.appendChild(document.createTextNode(domain));
         container.appendChild(label);
         div.appendChild(container);
     }
