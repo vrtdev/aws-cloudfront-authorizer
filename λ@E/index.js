@@ -277,6 +277,10 @@ function internal_server_error(config, exception) {
 }
 
 exports.handler = async (event, context) => {
+    const request_config = event.Records[0].cf.config;
+    console.log(`Handling ${request_config.eventType} for ${request_config.distributionId}: ` +
+                `id=${request_config.requestId}`);
+
     const config = await get_config_promise(context);
 
     const request = event.Records[0].cf.request;
