@@ -140,7 +140,7 @@ hnote over auth: Check refresh_token\nNOT OK => redirect to Cognito
 robrowser <- auth: 302 https://cognito?state=JWT{action: authorize, redirect_uri: <w:red>https:/</w><w:red>/restricted/whatever</w>}
 deactivate robrowser
 
-robrowser -> cognito: GET https://cognite?state=JWT{action: authorize, redirect_uri: https://restricted/whatever}
+robrowser -> cognito: GET https://cognito?state=JWT{action: authorize, redirect_uri: https://restricted/whatever}
 activate robrowser
 ...authentication...
 robrowser <- cognito: 302 https://authorizer/authenticate?\n     code=12345&\n     state=<w:red>JWT{action: authorize, redirect_uri: https://restricted/whatever}</w>
