@@ -137,10 +137,10 @@ section above:
 robrowser -> auth: GET https://authorizer/authorize?\n     redirect_uri=https%3a%2f%2frestricted%2fwhatever\nCookie: refresh_token=<none or expired>
 activate robrowser
 hnote over auth: Check refresh_token\nNOT OK => redirect to Cognito
-robrowser <- auth: 302 https://cognito?state=JWT{action: authorize, redirect_uri: <w:red>https:/</w><w:red>/restricted/whatever</w>}
+robrowser <- auth: 302 https:~//cognito?state=JWT{action: authorize, redirect_uri: <w:red>https://restricted/whatever</w>}
 deactivate robrowser
 
-robrowser -> cognito: GET https://cognito?state=JWT{action: authorize, redirect_uri: https://restricted/whatever}
+robrowser -> cognito: GET https:~//cognito?state=JWT{action: authorize, redirect_uri: https://restricted/whatever}
 activate robrowser
 ...authentication...
 robrowser <- cognito: 302 https://authorizer/authenticate?\n     code=12345&\n     state=<w:red>JWT{action: authorize, redirect_uri: https://restricted/whatever}</w>
