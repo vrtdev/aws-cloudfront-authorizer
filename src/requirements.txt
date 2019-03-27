@@ -4,3 +4,4 @@ pyjwt
 attrs
 requests
 structlog
+cachetools
