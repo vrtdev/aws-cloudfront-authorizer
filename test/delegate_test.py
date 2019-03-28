@@ -36,7 +36,7 @@ def test_post():
     refresh_token = gen_refresh_token('example.org')
     body = f"exp={now+1}&subject=sub&example.org=on"
     with mock.patch('delegate.get_refresh_token', return_value=refresh_token), \
-            mock.patch('delegate.get_domains', return_value=['example.org']), \
+            mock.patch('delegate.is_allowed_domain', side_effect=lambda d: d in {'example.org'}), \
             mock.patch('utils.get_jwt_secret', return_value='secret'):
         resp = delegate.handler({
             'httpMethod': 'POST',
@@ -50,7 +50,7 @@ def test_post_too_long():
     refresh_token = gen_refresh_token('example.org')
     body = f"exp={now+10}&subject=sub&example.org=on"
     with mock.patch('delegate.get_refresh_token', return_value=refresh_token), \
-         mock.patch('delegate.get_domains', return_value=['example.org']), \
+         mock.patch('delegate.is_allowed_domain', side_effect=lambda d: d in {'example.org'}), \
          mock.patch('utils.get_jwt_secret', return_value='secret'):
         resp = delegate.handler({
             'httpMethod': 'POST',
@@ -64,7 +64,7 @@ def test_post_domain_outside_list():
     refresh_token = gen_refresh_token('example.com')
     body = f"exp={now+1}&subject=sub&example.com=on"
     with mock.patch('delegate.get_refresh_token', return_value=refresh_token), \
-         mock.patch('delegate.get_domains', return_value=['example.org']), \
+         mock.patch('delegate.is_allowed_domain', side_effect=lambda d: d in {'example.org'}), \
          mock.patch('utils.get_jwt_secret', return_value='secret'):
         resp = delegate.handler({
             'httpMethod': 'POST',
@@ -78,7 +78,8 @@ def test_domain_outside_token():
     refresh_token = gen_refresh_token('example.org')
     body = f"exp={now+1}&subject=sub&example.com=on"
     with mock.patch('delegate.get_refresh_token', return_value=refresh_token), \
-         mock.patch('delegate.get_domains', return_value=['example.com', 'example.org']), \
+         mock.patch('delegate.is_allowed_domain',
+                    side_effect=lambda d: d in {'example.org', 'example.com'}), \
          mock.patch('utils.get_jwt_secret', return_value='secret'):
         resp = delegate.handler({
             'httpMethod': 'POST',
@@ -92,7 +93,7 @@ def test_post_no_subject():
     refresh_token = gen_refresh_token('example.org')
     body = f"exp={now+1}&subject=&example.org=on"
     with mock.patch('delegate.get_refresh_token', return_value=refresh_token), \
-         mock.patch('delegate.get_domains', return_value=['example.org']), \
+         mock.patch('delegate.is_allowed_domain', side_effect=lambda d: d in {'example.org'}), \
          mock.patch('utils.get_jwt_secret', return_value='secret'):
         resp = delegate.handler({
             'httpMethod': 'POST',

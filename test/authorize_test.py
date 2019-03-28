@@ -51,7 +51,7 @@ def test_normal():
     refresh_token = gen_refresh_token('example.org')
     with mock.patch('authorize.get_refresh_token', return_value=refresh_token), \
             mock.patch('utils.get_jwt_secret', return_value='secret'), \
-            mock.patch('authorize.get_domains', return_value=['example.org']):
+            mock.patch('authorize.is_allowed_domain', side_effect=lambda d: d in {'example.org'}):
         resp = authorize.handler({
             'queryStringParameters': {
                 'redirect_uri': 'https://example.org/',
@@ -65,7 +65,7 @@ def test_wrong_domain():
     refresh_token = gen_refresh_token('example.com')
     with mock.patch('authorize.get_refresh_token', return_value=refresh_token), \
             mock.patch('utils.get_jwt_secret', return_value='secret'), \
-            mock.patch('authorize.get_domains', return_value=['example.org']):
+            mock.patch('authorize.is_allowed_domain', side_effect=lambda d: d in {'example.org'}):
         resp = authorize.handler({
             'queryStringParameters': {
                 'redirect_uri': 'https://example.org/',
@@ -79,7 +79,7 @@ def test_no_exp():
     del refresh_token['exp']  # no exp
     with mock.patch('authorize.get_refresh_token', return_value=refresh_token), \
             mock.patch('utils.get_jwt_secret', return_value='secret'), \
-            mock.patch('authorize.get_domains', return_value=['example.org']):
+            mock.patch('authorize.is_allowed_domain', side_effect=lambda d: d in {'example.org'}):
         resp = authorize.handler({
             'queryStringParameters': {
                 'redirect_uri': 'https://example.org/',
@@ -93,7 +93,7 @@ def test_no_azp():
     del refresh_token['azp']
     with mock.patch('authorize.get_refresh_token', return_value=refresh_token), \
             mock.patch('utils.get_jwt_secret', return_value='secret'), \
-            mock.patch('authorize.get_domains', return_value=['example.org']):
+            mock.patch('authorize.is_allowed_domain', side_effect=lambda d: d in {'example.org'}):
         resp = authorize.handler({
             'queryStringParameters': {
                 'redirect_uri': 'https://example.org/',
@@ -106,7 +106,7 @@ def test_unlisted_domain():
     refresh_token = gen_refresh_token(domain=None)
     with mock.patch('authorize.get_refresh_token', return_value=refresh_token), \
             mock.patch('utils.get_jwt_secret', return_value='secret'), \
-            mock.patch('authorize.get_domains', return_value=['example.org']):
+            mock.patch('authorize.is_allowed_domain', side_effect=lambda d: d in {'example.org'}):
         resp = authorize.handler({
             'queryStringParameters': {
                 'redirect_uri': 'https://example.com/',
