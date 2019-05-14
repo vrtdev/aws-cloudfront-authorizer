@@ -1,5 +1,5 @@
 from troposphere import Template, cloudfront, constants, Sub, Join, Parameter, Ref, Output, GetAtt, \
-    Equals, AWS_NO_VALUE, If, route53, FindInMap, AWS_REGION, ImportValue, s3
+    Equals, route53, FindInMap, AWS_REGION, ImportValue, s3
 import custom_resources.acm
 import custom_resources.cloudformation
 import custom_resources.dynamodb
@@ -68,8 +68,7 @@ template.add_output(Output(
     Value=GetAtt(acm_cert, "DnsRecords"),
 ))
 
-use_cert_cond = 'UseCert'
-template.add_condition(use_cert_cond, Equals(Ref(param_use_cert), 'yes'))
+use_cert_cond = template.add_condition('UseCert', Equals(Ref(param_use_cert), 'yes'))
 
 
 # Create an entry in the domain-table, so this domain is listed in the Authorizer
@@ -133,6 +132,7 @@ example_bucket_policy = template.add_resource(s3.BucketPolicy(
 
 example_distribution = template.add_resource(cloudfront.Distribution(
     "ExampleDistribution",
+    Condition=use_cert_cond,
     DistributionConfig=cloudfront.DistributionConfig(
         Comment="Example distribution for restricted access",
         Aliases=[domain_name],
@@ -177,9 +177,8 @@ example_distribution = template.add_resource(cloudfront.Distribution(
             ),
         ),
         ViewerCertificate=cloudfront.ViewerCertificate(
-            AcmCertificateArn=If(use_cert_cond, Ref(acm_cert), Ref(AWS_NO_VALUE)),
-            SslSupportMethod=If(use_cert_cond, 'sni-only', Ref(AWS_NO_VALUE)),
-            CloudFrontDefaultCertificate=If(use_cert_cond, Ref(AWS_NO_VALUE), True),
+            AcmCertificateArn=Ref(acm_cert),
+            SslSupportMethod='sni-only',
         ),
     ),
     Tags=GetAtt(cloudformation_tags, 'TagList'),
