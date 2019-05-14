@@ -1,8 +1,9 @@
 from troposphere import Template, cloudfront, constants, Sub, Join, Parameter, Ref, Output, GetAtt, \
-    Equals, AWS_NO_VALUE, If, route53, FindInMap, AWS_REGION, ImportValue
+    Equals, AWS_NO_VALUE, If, route53, FindInMap, AWS_REGION, ImportValue, s3
 import custom_resources.acm
 import custom_resources.cloudformation
 import custom_resources.dynamodb
+import custom_resources.s3
 import cfnutils.mappings
 import cfnutils.output
 
@@ -87,6 +88,49 @@ template.add_resource(custom_resources.dynamodb.Item(
 ))
 
 
+# Create a bucket with example content (only needed for this example, obviously)
+example_bucket = template.add_resource(s3.Bucket(
+    "ExampleBucket",
+))
+example_bucket_content = template.add_resource(custom_resources.s3.Object(
+    "ExampleBucketContent",
+    Bucket=Ref(example_bucket),
+    Key="index.html",
+    ContentType='text/html',
+    Body=Sub("""<html>
+    <head><title>Protected content</title></head>
+    <body>
+    <h1>Protected Content</h1>
+    <p>You've reached the protected part of this example site.</p>
+    <p>The secret is: ${ExampleBucket}</p>
+    </body>
+    </html>
+    """),
+))
+example_bucket_oai = template.add_resource(cloudfront.CloudFrontOriginAccessIdentity(
+    "ExampleBucketOai",
+    CloudFrontOriginAccessIdentityConfig=cloudfront.CloudFrontOriginAccessIdentityConfig(
+        Comment=Sub("OAI for ${AWS::StackName}"),
+    ),
+))
+example_bucket_policy = template.add_resource(s3.BucketPolicy(
+    "DefaultOriginBucketPolicy",
+    Bucket=Ref(example_bucket),
+    PolicyDocument={
+        "Version": "2012-10-17",
+        "Id": "PolicyForCloudFrontPrivateContent",
+        "Statement": [
+            {
+                "Sid": " Grant a CloudFront Origin Identity access to support private content",
+                "Effect": "Allow",
+                "Principal": {"CanonicalUser": GetAtt(example_bucket_oai, 'S3CanonicalUserId')},
+                "Action": "s3:GetObject",
+                "Resource": Join('', ["arn:aws:s3:::", Ref(example_bucket), "/*"]),
+            },
+        ],
+    },
+))
+
 example_distribution = template.add_resource(cloudfront.Distribution(
     "ExampleDistribution",
     DistributionConfig=cloudfront.DistributionConfig(
@@ -97,18 +141,18 @@ example_distribution = template.add_resource(cloudfront.Distribution(
         HttpVersion='http2',
         PriceClass='PriceClass_100',
         Origins=[
+            # Your usual config goes here, example:
             cloudfront.Origin(
-                # Your usual config goes here
-                Id="RealOrigin",
-                DomainName="ifconfig.io",
-                CustomOriginConfig=cloudfront.CustomOriginConfig(
-                    HTTPPort=80,
-                    HTTPSPort=443,
-                    OriginProtocolPolicy='https-only',
-                    OriginSSLProtocols=['TLSv1.2', 'TLSv1.1', 'TLSv1']
+                Id="ExampleS3",
+                DomainName=Join('', [Ref(example_bucket), '.s3.amazonaws.com']),
+                S3OriginConfig=cloudfront.S3OriginConfig(
+                    OriginAccessIdentity=Join('', [
+                        'origin-access-identity/cloudfront/', Ref(example_bucket_oai),
+                    ])
                 ),
             ),
         ],
+        DefaultRootObject="index.html",  # Needed for this example only, adapt to your requirements
         CacheBehaviors=[
             # If you have additional cache behaviours,
             # make sure that (at least) the behaviour matching
@@ -124,7 +168,7 @@ example_distribution = template.add_resource(cloudfront.Distribution(
                 ),
             ],
             # Rest of config as per your needs
-            TargetOriginId='RealOrigin',
+            TargetOriginId='ExampleS3',
             ForwardedValues=cloudfront.ForwardedValues(
                 QueryString=True,
                 Cookies=cloudfront.Cookies(
