@@ -49,7 +49,11 @@ def handler(event, context) -> dict:
             )
             for page in response_iterator:
                 for domain_entry in page['Items']:
-                    domains.append(domain_entry['domain']['S'])
+                    try:
+                        domains.append(domain_entry['domain']['S'])
+                    except KeyError:
+                        structlog.get_logger().msg("Invalid domain in DynamoDB: " + repr(domain_entry))
+                        pass
 
             groups = {}
             response_iterator = scan_paginator.paginate(
@@ -57,7 +61,11 @@ def handler(event, context) -> dict:
             )
             for page in response_iterator:
                 for group_entry in page['Items']:
-                    groups[group_entry['group']['S']] = group_entry['domains']['SS']
+                    try:
+                        groups[group_entry['group']['S']] = group_entry['domains']['SS']
+                    except KeyError as e:
+                        structlog.get_logger().msg("Invalid group in DynamoDB: " + repr(group_entry))
+                        pass
 
         with open(os.path.join(os.path.dirname(__file__), 'delegate.html')) as f:
             html = f.read()

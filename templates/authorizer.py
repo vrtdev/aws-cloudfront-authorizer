@@ -17,7 +17,7 @@ template = Template()
 
 custom_resources.use_custom_resources_stack_name_parameter(template)
 
-template.add_transform('AWS::Serverless-2016-10-31')
+template.set_transform('AWS::Serverless-2016-10-31')
 
 param_s3_bucket_name = template.add_parameter(Parameter(
     "S3BucketName",
