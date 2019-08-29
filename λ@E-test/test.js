@@ -1,6 +1,5 @@
 const assert = require('assert');
-const sinon = require('sinon');
-const rewire = require('rewire');
+const rewire = require('../λ@E/node_modules/rewire');
 const lae = rewire('../λ@E/index.js');
 const JWT = require('../λ@E/node_modules/jsonwebtoken');
 
@@ -32,7 +31,7 @@ describe('get_config', function() {
     it('should return defaults', async function() {
 
         const get_config_promise = lae.__get__('get_config_promise');
-        const config = await get_config_promise();
+        const config = await get_config_promise({'invokedFunctionArn': 'foobar'});
         assert.notEqual(config, {});
     })
 });
@@ -163,6 +162,11 @@ describe('handler', function() {
     let cf_event = {
         'Records': [{
             'cf': {
+                'config': {
+                    'eventType': 'test',
+                    'distributionId': 'E1234',
+                    'requestId': 'abc',
+                },
                 'request': request,
             },
         }],
@@ -184,7 +188,7 @@ describe('handler', function() {
             );
 
             request.uri = '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220/set-cookie';
-            request.querystring = `token=${signed_token}&return_to=http%3a%2f%2fexample.org%2f`;
+            request.querystring = `access_token=${signed_token}&redirect_uri=http%3a%2f%2fexample.org%2f`;
 
             const response = await lae.handler(cf_event, {});
             assert.equal(response.status, 302);
@@ -204,7 +208,7 @@ describe('handler', function() {
             const response = await lae.handler(cf_event, {});
             assert.equal(response.status, 400);
         });
-        it('should 500 without a return_to', async function() {
+        it('should 500 without a redirect_uri', async function() {
             const now = Math.floor((new Date()) / 1000);
             let in_token = {
                 'iat': now,
@@ -220,12 +224,12 @@ describe('handler', function() {
             );
 
             request.uri = '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220/set-cookie';
-            request.querystring = `token=${signed_token}`;
+            request.querystring = `access_token=${signed_token}`;
             const response = await lae.handler(cf_event, {});
             assert.equal(response.status, 500);
         });
 
-        it('should 400 on return_to mismatch', async function() {
+        it('should 400 on redirect_uri mismatch', async function() {
             const now = Math.floor((new Date()) / 1000);
             let in_token = {
                 'iat': now,
@@ -241,7 +245,7 @@ describe('handler', function() {
             );
 
             request.uri = '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220/set-cookie';
-            request.querystring = `token=${signed_token}&return_to=http%3a%2f%2fexample.com%2f`;
+            request.querystring = `access_token=${signed_token}&redirect_uri=http%3a%2f%2fexample.com%2f`;
 
             const response = await lae.handler(cf_event, {});
             assert.equal(response.status, 400);
