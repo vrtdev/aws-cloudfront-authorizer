@@ -1,7 +1,9 @@
+import json
 import time
 from unittest import mock
 
 import jwt
+import jwt.utils
 import pytest
 
 from src import utils
@@ -84,3 +86,24 @@ def test_refresh_token_valid_token():
             }
         })
         assert in_token == token
+
+
+def test_refresh_token_unsigned_token():
+    now = time.time()
+    in_token = {'iat': now, 'exp': now + 5, 'azp': 'test', }
+    raw_token = \
+        jwt.utils.base64url_encode(json.dumps({
+            "typ": "JWT",
+            "alg": "None",
+        }).encode('utf-8')).decode('utf-8') + \
+        '.' + \
+        jwt.utils.base64url_encode(json.dumps(in_token).encode('utf-8')).decode('utf-8') + \
+        '.' + \
+        ''  # no signature
+    with mock.patch('src.utils.get_refresh_token_jwt_secret', return_value="secret"):
+        with pytest.raises(utils.BadRequest):
+            utils.get_refresh_token({
+                'headers': {
+                    'Cookie': f"{utils.get_config().cookie_name_refresh_token}={raw_token}",
+                }
+            })

@@ -8,6 +8,17 @@ lae.__set__('get_config_bucket', async function(context) { return 'dummy' });
 lae.__set__('asyncS3GetObject', async function(param) { return '{}' });
 lae.__set__('get_jwt_secret_promise', async function(region, param_name) { return 'secret'; });
 
+
+function base64url(string, encoding) {
+    return Buffer
+        .from(string, encoding)
+        .toString('base64')
+        .replace(/=/g, '')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_');
+}
+
+
 describe('UTF8', function() {
     describe('encode', function() {
         it('should decode 0x41 to `A`', function() {
@@ -143,6 +154,31 @@ describe('validate_token', function() {
 
         try {
             const out_token = await lae.__get__('validate_token')(config, signed_token, 'example.org');
+            assert.fail("Should have thrown");
+        } catch(e) {
+            // pass
+        }
+    });
+
+    it('should check algorithm', async function() {
+        const config = await lae.__get__('get_config_promise')();
+
+        const now = Math.floor((new Date()) / 1000);
+        let in_token = {
+            'iat': now,
+            'exp': now + 5,
+            'domains': ['example.com'],
+        };
+        const unsigned_token =
+            base64url(JSON.stringify({
+                "typ": "JWT",
+                "alg": "None",
+            }), 'utf-8') + '.' +
+            base64url(JSON.stringify(in_token), 'utf-8') + '.' +
+            '';  // empty signature
+
+        try {
+            const out_token = await lae.__get__('validate_token')(config, unsigned_token, 'example.org');
             assert.fail("Should have thrown");
         } catch(e) {
             // pass
