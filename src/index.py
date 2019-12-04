@@ -14,13 +14,13 @@ def handler(event, context) -> dict:
     refresh_token_exp = None
     domains = None
     azp = None
-    sub = None
+    sub = []
     try:
         refresh_token = get_refresh_token(event)
 
         refresh_token_exp = refresh_token['exp']
         azp = refresh_token['azp']  # Mandatory
-        sub = refresh_token.get('sub', None)  # optional
+        sub = refresh_token.get('sub', [])  # optional
 
         try:
             domains = refresh_token['domains']

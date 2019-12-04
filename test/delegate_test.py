@@ -1,6 +1,8 @@
 import time
 from unittest import mock
 
+import jwt
+
 import delegate
 import utils
 
@@ -100,3 +102,20 @@ def test_post_no_subject():
             'body': body,
         }, None)
         assert 400 == resp['statusCode']
+
+
+def test_sub_delegate():
+    now = int(time.time())
+    refresh_token = gen_refresh_token('example.org')
+    refresh_token['sub'] = ['test1']
+    body = f"exp={now+1}&subject=test2&example.org=on"
+    with mock.patch('delegate.get_refresh_token', return_value=refresh_token), \
+         mock.patch('delegate.is_allowed_domain', side_effect=lambda d: d in {'example.org'}), \
+         mock.patch('utils.get_jwt_secret', return_value='secret'):
+        resp = delegate.handler({
+            'httpMethod': 'POST',
+            'body': body,
+        }, None)
+        assert 200 == resp['statusCode']
+        delegate_token = jwt.decode(resp['body'], 'secret', verify=False)
+        assert 'test1' in delegate_token['sub']
