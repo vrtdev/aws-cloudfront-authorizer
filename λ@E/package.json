@@ -1,11 +1,13 @@
 {
   "name": "lambdaatedge",
   "dependencies": {
-    "jsonwebtoken": "^8.3.0",
-    "mocha": "^6.2.0",
-    "rewire": "^4.0.1",
+    "jsonwebtoken": "^8.3.0"
   },
   "dependenciesCOMMENT": {
     "aws-sdk": "also required, but is already installed on λ@E. Also, this boost our size up beyond the allowed 1MB."
+  },
+  "devDependencies": {
+    "mocha": "^6.2.0",
+    "rewire": "^4.0.1"
   }
 }
