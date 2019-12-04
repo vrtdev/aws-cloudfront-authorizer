@@ -117,7 +117,7 @@ def handler(event, context) -> dict:
             'exp': exp,
             'domains': list(domains),
             'azp': refresh_token['azp'],  # Authorized Party
-            'sub': subject,  # subject
+            'sub': refresh_token.get('sub', []) + [subject],  # subject
         }
         structlog.get_logger().log("Issuing JWT", jwt=delegate_token)
         raw_delegate_token = jwt.encode(
