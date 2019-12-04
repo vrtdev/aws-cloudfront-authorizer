@@ -38,7 +38,7 @@ cp -a "${SRC_DIR}/" "${BUILD_DIR}"
 (
     cd "${BUILD_DIR}"
     rm -rf node_modules || true
-    npm install
+    npm install --production
     # Optionally clean up caches
 
     if [ -n "${HASH_FILE}" ]; then
