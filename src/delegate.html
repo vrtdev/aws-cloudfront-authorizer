@@ -254,8 +254,11 @@
             body: formData
         })
             .then(function (response) {
-                if (response.status !== 200)
-                    throw new Error(response.statusText);
+                if (response.status !== 200) {
+                    return response.text().then(function(text) {
+                        throw new Error(text);
+                    });
+                }
 
                 return response.text()
             })
