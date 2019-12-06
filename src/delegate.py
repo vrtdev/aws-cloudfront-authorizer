@@ -9,7 +9,7 @@ import structlog
 
 from utils import redirect_to_cognito, get_refresh_token, NotLoggedIn, BadRequest, \
     bad_request, InternalServerError, internal_server_error, \
-    get_grant_jwt_secret, get_state_jwt_secret, get_config, is_allowed_domain, dynamodb_client
+    get_grant_jwt_secret, get_state_jwt_secret, get_config, is_allowed_domain, dynamodb_client, get_domains
 
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
 
@@ -42,20 +42,10 @@ def handler(event, context) -> dict:
             domains = refresh_token['domains']
             groups = {}
         else:
-            domains = []
-            scan_paginator = dynamodb_client.get_paginator('scan')
-            response_iterator = scan_paginator.paginate(
-                TableName=get_config().domain_table,
-            )
-            for page in response_iterator:
-                for domain_entry in page['Items']:
-                    try:
-                        domains.append(domain_entry['domain']['S'])
-                    except KeyError:
-                        structlog.get_logger().msg("Invalid domain in DynamoDB: " + repr(domain_entry))
-                        pass
+            domains = get_domains()
 
             groups = {}
+            scan_paginator = dynamodb_client.get_paginator('scan')
             response_iterator = scan_paginator.paginate(
                 TableName=get_config().group_table,
             )
