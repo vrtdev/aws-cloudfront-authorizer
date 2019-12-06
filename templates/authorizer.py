@@ -428,6 +428,20 @@ template.add_resource(serverless.Function(
 
 
 template.add_resource(serverless.Function(
+    "Logout",
+    **common_lambda_options,
+    Handler='logout.handler',
+    Events={
+        'Logout': serverless.ApiEvent(
+            'unused',
+            Path='/logout',
+            Method='POST',
+        ),
+    },
+))
+
+
+template.add_resource(serverless.Function(
     "Authenticate",
     **common_lambda_options,
     Handler='authenticate.handler',
