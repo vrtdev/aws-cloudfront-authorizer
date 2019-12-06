@@ -7,6 +7,8 @@ import structlog
 
 from utils import generate_cookie, get_config, bad_request, get_csrf_jwt_secret, get_raw_refresh_token, NotLoggedIn
 
+structlog.configure(processors=[structlog.processors.JSONRenderer()])
+
 
 def handler(event, context) -> dict:
     del context  # unused
