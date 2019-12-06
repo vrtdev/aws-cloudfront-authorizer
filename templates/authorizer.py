@@ -468,6 +468,19 @@ template.add_resource(serverless.Function(
     },
 ))
 
+template.add_resource(serverless.Function(
+    "BatchAuthorize",
+    **common_lambda_options,
+    Handler='batch_authorize.handler',
+    Events={
+        'BatchAuthorize': serverless.ApiEvent(
+            'unused',
+            Path='/batch_authorize',
+            Method='GET',
+        ),
+    },
+))
+
 template.add_output(Output(
     "ApiDomain",
     Description='Domain name of the API',

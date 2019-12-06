@@ -1,9 +1,8 @@
-import time
-import typing
 from unittest import mock
 
 import authorize
 import utils
+from .utils import gen_refresh_token
 
 
 def test_no_redirect_uri():
@@ -33,18 +32,6 @@ def test_bad_request():
             },
         }, None)
         assert 400 == resp['statusCode']
-
-
-def gen_refresh_token(domain: typing.Optional[str], exp_in: int = 5):
-    now = int(time.time())
-    token = {
-        'iat': now,
-        'exp': now + exp_in,
-        'azp': 'test',
-    }
-    if domain is not None:
-        token['domains'] = [domain]
-    return token
 
 
 def test_normal():

@@ -255,3 +255,19 @@ def get_refresh_token(event) -> dict:
     """
     raw_refresh_token = get_raw_refresh_token(event)  # may raise
     return parse_raw_refresh_token(raw_refresh_token)  # may raise
+
+
+def get_domains():
+    domains = []
+    scan_paginator = dynamodb_client.get_paginator('scan')
+    response_iterator = scan_paginator.paginate(
+        TableName=get_config().domain_table,
+    )
+    for page in response_iterator:
+        for domain_entry in page['Items']:
+            try:
+                domains.append(domain_entry['domain']['S'])
+            except KeyError:
+                structlog.get_logger().msg("Invalid domain in DynamoDB: " + repr(domain_entry))
+                pass
+    return domains
