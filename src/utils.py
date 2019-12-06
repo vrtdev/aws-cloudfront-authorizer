@@ -94,6 +94,10 @@ def get_grant_jwt_secret() -> str:
     return get_jwt_secret() + 'gr'
 
 
+def get_csrf_jwt_secret() -> str:
+    return get_jwt_secret() + 'csrf'
+
+
 def canonicalize_headers(
         headers: typing.Union[typing.Dict[str, str], typing.List[typing.Tuple[str, str]]]
 ) -> typing.Dict[str, typing.List[str]]:
@@ -213,21 +217,19 @@ class NotLoggedIn(Exception): pass
 class BadRequest(Exception): pass
 class InternalServerError(Exception): pass
 
-def get_refresh_token(event) -> dict:
-    """
-    Extract the refresh_token from the Cookie:-header
-    :return: the refresh_token payload
-    :raises: NotLoggedIn, BadRequest, InternalServerError
-    """
-    headers = canonicalize_headers(event['headers'])
 
+def get_raw_refresh_token(event) -> str:
+    headers = canonicalize_headers(event['headers'])
     try:
         request_cookies = cookies.BaseCookie(headers['cookie'][0])
         raw_refresh_token = request_cookies[get_config().cookie_name_refresh_token].value
     except (KeyError, IndexError):
         structlog.get_logger().log("No refresh_token cookie found")
         raise NotLoggedIn()
+    return raw_refresh_token
 
+
+def parse_raw_refresh_token(raw_refresh_token: str) -> dict:
     try:
         refresh_token = jwt.decode(  # may raise
             raw_refresh_token,
@@ -242,5 +244,14 @@ def get_refresh_token(event) -> dict:
     except jwt.InvalidTokenError:
         structlog.get_logger().log("Invalid token")
         raise BadRequest("Could not decode token")
-
     return refresh_token
+
+
+def get_refresh_token(event) -> dict:
+    """
+    Extract the refresh_token from the Cookie:-header
+    :return: the refresh_token payload
+    :raises: NotLoggedIn, BadRequest, InternalServerError
+    """
+    raw_refresh_token = get_raw_refresh_token(event)  # may raise
+    return parse_raw_refresh_token(raw_refresh_token)  # may raise

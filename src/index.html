@@ -23,7 +23,11 @@
     <ul class="domain_limit domain_list" style="display: none;"></ul>
 
     <p class="access" style="display: none;">
-        <a href="/delegate">Delegate (part of) this access to a third party</a>
+        <a href="/delegate">Delegate (part of) this access to a third party</a><br/>
+        <form action="/logout" method="POST">
+            <input type="hidden" name="CSRF" value="{{{csrf}}}"/>
+            <input type="submit" value="Logout"/>
+        </form>
     </p>
 </div>
 
