@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import time
 import traceback
 import typing
 from http import cookies
@@ -271,3 +272,31 @@ def get_domains():
                 structlog.get_logger().msg("Invalid domain in DynamoDB: " + repr(domain_entry))
                 pass
     return domains
+
+
+def access_token_from_refresh_token(
+        refresh_token: dict,
+        domain: str,
+) -> str:
+    """
+    Convert refresh token to access token for one particular domain
+
+    :raises: BadRequest if the refresh_token is not acceptable
+    """
+    if 'exp' not in refresh_token or \
+            'azp' not in refresh_token:
+        raise BadRequest('No exp or azp in token')
+
+    access_token = refresh_token.copy()  # Copy azp, exp and everything else (sub, if present)
+
+    access_token['iat'] = int(time.time())
+
+    access_token['domains'] = [domain]
+
+    raw_access_token = jwt.encode(
+        access_token,
+        get_access_token_jwt_secret(),
+        algorithm='HS256',
+    ).decode('ascii')
+
+    return raw_access_token
