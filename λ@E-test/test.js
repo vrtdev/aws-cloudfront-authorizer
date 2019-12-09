@@ -319,4 +319,48 @@ describe('handler', function() {
             assert.equal(response, request);
         });
     });
+
+    describe('redirect logic', function () {
+        it('should redirect when not logged in', async function() {
+            const response = await lae.handler(cf_event, {});
+            assert.equal(response.status, "302");
+        });
+
+        it('should not redirect when asked not to', async function() {
+            const config = await lae.__get__('get_config_promise')();
+
+            request.headers['cookie'] = [{
+                key: 'Cookie',
+                value: `${config.cookie_name_no_redirect}=whatever_not_checked`,
+            }];
+            const response = await lae.handler(cf_event, {});
+            assert.equal(response.status, "401");
+        });
+
+        it('should not redirect when asked not to, invalid cookie case', async function() {
+            const config = await lae.__get__('get_config_promise')();
+
+            const now = Math.floor((new Date()) / 1000);
+            let in_token = {
+                'iat': now,
+                'exp': now + 5,
+                'domains': ['example.org'],
+            };
+            const signed_token = JWT.sign(
+                in_token,
+                'bad_secret',
+                {
+                    "algorithm": "HS256"
+                }
+            );
+
+            request.headers['cookie'] = [{
+                key: 'Cookie',
+                value: `${config.cookie_name_no_redirect}=whatever_not_checked; ` +
+                    `${config.cookie_name_access_token}=${signed_token}`,
+            }];
+            const response = await lae.handler(cf_event, {});
+            assert.equal(response.status, "401");
+        });
+    });
 });

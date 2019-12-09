@@ -62,6 +62,7 @@ async function get_config_(context) {
 
         'set_cookie_path': '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220/set-cookie',
         'cookie_name_access_token': 'authorizer_access',
+        'cookie_name_no_redirect': 'authorizer_no_redirect',
 
         'authorize_url': 'https://authorizer.example.org/authorize',
     };
@@ -231,7 +232,27 @@ function bad_request(config, request) {
         body: 'Bad request',
     };
 }
-function redirect_auth(config, request) {
+function forbidden(config, request) {
+    console.log("Issuing Forbidden");
+    return {
+        status: 401,
+        statusDescription: 'Forbidden',
+        headers: {
+            'x-served-by': [{
+                key: 'X-Served-By',
+                value: config.function_arn,
+            }],
+        },
+        bodyEncoding: 'text',
+        body: 'Forbidden',
+    };
+}
+function redirect_auth(config, request, cookies) {
+    if(cookies === null) cookies = {};
+    if(config.cookie_name_no_redirect in cookies) {
+        return forbidden(config, request);
+    }
+
     console.log("Issuing redirect to authz");
     const request_headers = request.headers;
     const hostname = request_headers.host[0].value;  // Host:-header is required, should always be present;
@@ -365,7 +386,7 @@ exports.handler = async (event, context) => {
     if(!(config.cookie_name_access_token in cookies)) {
         // Cookie not present. Redirect to authz
         console.log(`Could not find cookie with name "${config.cookie_name_access_token}"`);
-        return redirect_auth(config, request);
+        return redirect_auth(config, request, cookies);
     }
 
     const cookie_value = cookies[config.cookie_name_access_token];
@@ -376,7 +397,7 @@ exports.handler = async (event, context) => {
         console.log("Access granted");
         console.log(token);  // Don't log signed token, but content only
     } catch(e) {
-        if(e instanceof InvalidToken) return redirect_auth(config, request);
+        if(e instanceof InvalidToken) return redirect_auth(config, request, cookies);
         else if(e instanceof BadToken) return bad_request(config, request);
         else return internal_server_error(config, e);
     }
