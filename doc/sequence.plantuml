@@ -111,6 +111,30 @@ end note
 
 end
 
+opt logout
+
+clbrowser -> auth: GET /\nCookie: refresh_token=JWT{azp, exp, [sub, scope]}
+activate clbrowser
+clbrowser <- auth: 200 <i>Overview of authorizations</i>\n<i>CSRF-token for logout</i>
+
+clbrowser -> auth: POST /logout\nCookie: refresh_token=JWT{azp, exp, [sub, scope]}\nData: <i>CSRF-token</i>
+note <<security>> left
+ - DoS via phishing link:
+    -> CSRF tied to refresh_token
+          limited in time
+end note
+
+hnote over auth
+validate CSRF
+check <5min old
+check valid for current refresh_token
+end note
+clbrowser <- auth: 200\nSet-Cookie: refresh_token=""; expire=<i>past</i>
+deactivate clbrowser
+
+
+end
+
 
 
 newpage
@@ -191,6 +215,16 @@ note <<security>> left
  - Disclosure via Refer(r)er
     -> Referrer-Policy
 end note
+
+
+end
+
+opt batch_authorize
+
+clbrowser -> auth: GET https://authorizer/batch_authorize?\nCookie: refresh_token=JWT{azp, exp[, sub, scope]}
+activate clbrowser
+clbrowser <- auth: 200 <i>JSON with all access_tokens for scope</i>
+deactivate clbrowser
 
 end
 
