@@ -5,7 +5,8 @@ import jwt
 import structlog
 
 from utils import get_config, bad_request, get_access_token_jwt_secret, redirect_to_cognito, NotLoggedIn, BadRequest, \
-    InternalServerError, internal_server_error, get_refresh_token, get_state_jwt_secret, is_allowed_domain
+    InternalServerError, internal_server_error, get_refresh_token, get_state_jwt_secret, is_allowed_domain, \
+    access_token_from_refresh_token
 
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
 
@@ -46,18 +47,13 @@ def handler(event, context) -> dict:
         if redirect_uri_comp.netloc not in refresh_token['domains']:
             return bad_request('', f"{redirect_uri} is not an allowed domain for this refresh token")
 
-    access_token = refresh_token  # Copy azp, exp and everything else (sub, if present)
-    if 'exp' not in access_token or \
-            'azp' not in access_token:
-        return bad_request('', 'no exp or azp in token')
-    access_token['iat'] = int(time.time())
-    access_token['domains'] = [redirect_uri_comp.netloc]  # Limit scope to single domain
-
-    raw_access_token = jwt.encode(
-        access_token,
-        get_access_token_jwt_secret(),
-        algorithm='HS256',
-    ).decode('ascii')
+    try:
+        access_token = access_token_from_refresh_token(
+            refresh_token,
+            redirect_uri_comp.netloc
+        )
+    except BadRequest as e:
+        return bad_request('', e)
 
     return {
         'statusCode': 302,
@@ -68,7 +64,7 @@ def handler(event, context) -> dict:
                 redirect_uri_comp.netloc,
                 get_config().set_cookie_path,
                 urlencode({  # query
-                    'access_token': raw_access_token,  # Key must match with λ@E's expectations
+                    'access_token': access_token,  # Key must match with λ@E's expectations
                     'redirect_uri': redirect_uri,  # Key must match with λ@E's expectations
                 }),
                 '',  # fragment
