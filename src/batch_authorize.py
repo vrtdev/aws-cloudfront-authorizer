@@ -1,12 +1,9 @@
 import json
-import time
-from urllib.parse import urlsplit, urlunsplit, urlencode
 
-import jwt
 import structlog
 
-from utils import get_config, bad_request, get_access_token_jwt_secret, redirect_to_cognito, NotLoggedIn, BadRequest, \
-    InternalServerError, internal_server_error, get_refresh_token, get_state_jwt_secret, is_allowed_domain, get_domains, \
+from utils import bad_request, NotLoggedIn, BadRequest, \
+    InternalServerError, internal_server_error, get_refresh_token, get_domains, \
     access_token_from_refresh_token
 
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
