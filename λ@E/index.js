@@ -392,8 +392,9 @@ exports.handler = async (event, context) => {
     const cookie_value = cookies[config.cookie_name_access_token];
     console.log(`Found cookie with name "${config.cookie_name_access_token}"`);  // don't log value
 
+    let token;
     try {
-        const token = await validate_token(config, cookie_value, hostname);
+        token = await validate_token(config, cookie_value, hostname);
         console.log("Access granted");
         console.log(token);  // Don't log signed token, but content only
     } catch(e) {
@@ -405,6 +406,9 @@ exports.handler = async (event, context) => {
     // Remove access_token from Cookie:-header
     delete cookies[config.cookie_name_access_token];
     request.headers['cookie'] = [{'key': 'Cookie', 'value': render_cookie_header_value(cookies)}];
+
+    // Add the (unsigned) token info
+    request.headers['x-authorized-token'] = [{'key': 'X-Authorized-Token', 'value': JSON.stringify(token)}];
 
     // Pass through request
     console.log("Passing through request");

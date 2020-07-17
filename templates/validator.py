@@ -57,7 +57,7 @@ validator_lambda = template.add_resource(awslambda.Function(
         S3Bucket=Ref(param_s3_bucket_name),
         S3Key=Ref(param_s3_key),
     ),
-    Runtime='nodejs8.10',
+    Runtime='nodejs12.x',
     Handler='index.handler',
     Role=Ref(param_role),
     Tags=GetAtt(cloudformation_tags, 'TagList'),
