@@ -61,25 +61,33 @@ param_use_cert = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(param_use_cert, "Use TLS certificate")
 
-param_auto_use_adfs = template.add_parameter(Parameter(
-    "AutoUseAdfs",
+param_auto_use_ef_idp = template.add_parameter(Parameter(
+    "AutoUseEFIDP",
     Type=constants.STRING,
-    Description="autoselect ADFS for Cognito authentication",
+    Description="autoselect External Federated Identity Provider for Cognito authentication",
     AllowedValues=['yes', 'no'],
     Default='yes',
 ))
 
-AUTO_USE_ADFS = template.add_condition(
-    "AutoUseAdfsCond",
-    Equals(Ref(param_auto_use_adfs), 'yes')
+AUTO_USE_EF_IDP = template.add_condition(
+    "AutoUseEFIDPCond",
+    Equals(Ref(param_auto_use_ef_idp), 'yes')
 )
 
-adfs_metadata_url = template.add_parameter(Parameter(
-    "AdfsMetadataUrl",
+ef_idp_name = template.add_parameter(Parameter(
+    "EFIDPName",
+    Type=constants.STRING,
+    Default='adfs',
+))
+template.set_parameter_label(ef_idp_name, "External Federated Identity Provider Name")
+
+
+ef_idp_metadata_url = template.add_parameter(Parameter(
+    "EFIDPMetadataUrl",
     Type=constants.STRING,
     Default='https://adfs.example.com/FederationMetadata/2007-06/FederationMetadata.xml',
 ))
-template.set_parameter_label(adfs_metadata_url, "ADFS Metadata Url")
+template.set_parameter_label(ef_idp_metadata_url, "External Federated Identity Provider Metadata Url")
 
 cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
 
@@ -95,21 +103,20 @@ cognito_user_pool_domain = template.add_resource(custom_resources.cognito.UserPo
     # Domain=auto-generated
 ))
 
-adfs_provider_name = 'adfs'
-adfs_identity_provider = template.add_resource(custom_resources.cognito.UserPoolIdentityProvider(
-    "AdfsIdentityProvider",
+extenal_federated_identity_provider = template.add_resource(custom_resources.cognito.UserPoolIdentityProvider(
+    "EFIdentityProvider",
     UserPoolId=Ref(cognito_user_pool),
-    ProviderName=adfs_provider_name,
+    ProviderName=ef_idp_name,
     ProviderType='SAML',
     ProviderDetails={
-        'MetadataURL': Ref(adfs_metadata_url),
+        'MetadataURL': Ref(ef_idp_metadata_url),
     },
     AttributeMapping={
         'email': 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
     },
 ))
 
-# Output for ADFS configuration:
+# Output for IDP configuration:
 template.add_output(Output(
     'SamlUrl',
     Value=Join('', [
@@ -140,8 +147,8 @@ cognito_user_pool_client = template.add_resource(custom_resources.cognito.UserPo
     AllowedOAuthFlows=["code"],
     AllowedOAuthScopes=["openid", "email", "profile", "aws.cognito.signin.user.admin"],
     AllowedOAuthFlowsUserPoolClient=True,
-    SupportedIdentityProviders=["COGNITO", adfs_provider_name],
-    DependsOn=[adfs_identity_provider.title],  # No automatic dependency
+    SupportedIdentityProviders=["COGNITO", ef_idp_name],
+    DependsOn=[extenal_federated_identity_provider.title],  # No automatic dependency
     GenerateSecret=True,
 ))
 
@@ -374,7 +381,7 @@ common_lambda_options = {
             "COGNITO_DOMAIN_PREFIX": GetAtt(cognito_user_pool_domain, 'Domain'),
             "COGNITO_CLIENT_ID": Ref(cognito_user_pool_client),
             "COGNITO_CLIENT_SECRET": GetAtt(cognito_user_pool_client, 'ClientSecret'),
-            "COGNITO_ADFS_IDP_NAME": If(AUTO_USE_ADFS, adfs_provider_name, 'COGNITO'),
+            "COGNITO_EF_IDP_NAME": If(AUTO_USE_EF_IDP, ef_idp_name, 'COGNITO'),
             "DOMAIN_NAME": Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
             "CONFIG_BUCKET": Ref(config_bucket),
         }
