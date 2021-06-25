@@ -106,7 +106,7 @@ cognito_user_pool_domain = template.add_resource(custom_resources.cognito.UserPo
 extenal_federated_identity_provider = template.add_resource(custom_resources.cognito.UserPoolIdentityProvider(
     "EFIdentityProvider",
     UserPoolId=Ref(cognito_user_pool),
-    ProviderName=ef_idp_name,
+    ProviderName=Ref(ef_idp_name),
     ProviderType='SAML',
     ProviderDetails={
         'MetadataURL': Ref(ef_idp_metadata_url),
@@ -147,7 +147,7 @@ cognito_user_pool_client = template.add_resource(custom_resources.cognito.UserPo
     AllowedOAuthFlows=["code"],
     AllowedOAuthScopes=["openid", "email", "profile", "aws.cognito.signin.user.admin"],
     AllowedOAuthFlowsUserPoolClient=True,
-    SupportedIdentityProviders=["COGNITO", ef_idp_name],
+    SupportedIdentityProviders=["COGNITO", Ref(ef_idp_name)],
     DependsOn=[extenal_federated_identity_provider.title],  # No automatic dependency
     GenerateSecret=True,
 ))
@@ -381,7 +381,7 @@ common_lambda_options = {
             "COGNITO_DOMAIN_PREFIX": GetAtt(cognito_user_pool_domain, 'Domain'),
             "COGNITO_CLIENT_ID": Ref(cognito_user_pool_client),
             "COGNITO_CLIENT_SECRET": GetAtt(cognito_user_pool_client, 'ClientSecret'),
-            "COGNITO_EF_IDP_NAME": If(AUTO_USE_EF_IDP, ef_idp_name, 'COGNITO'),
+            "COGNITO_EF_IDP_NAME": If(AUTO_USE_EF_IDP, Ref(ef_idp_name), 'COGNITO'),
             "DOMAIN_NAME": Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
             "CONFIG_BUCKET": Ref(config_bucket),
         }
