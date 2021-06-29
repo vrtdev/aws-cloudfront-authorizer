@@ -225,7 +225,7 @@ def get_raw_refresh_token(event) -> str:
         request_cookies = cookies.BaseCookie(headers['cookie'][0])
         raw_refresh_token = request_cookies[get_config().cookie_name_refresh_token].value
     except (KeyError, IndexError):
-        structlog.get_logger().log("No refresh_token cookie found")
+        structlog.get_logger().msg("No refresh_token cookie found")
         raise NotLoggedIn()
     return raw_refresh_token
 
@@ -238,12 +238,12 @@ def parse_raw_refresh_token(raw_refresh_token: str) -> dict:
             algorithms=['HS256'],
             verify=True,
         )
-        structlog.get_logger().log("Valid refresh_token found", jwt=refresh_token)
+        structlog.get_logger().msg("Valid refresh_token found", jwt=refresh_token)
     except jwt.ExpiredSignatureError:
-        structlog.get_logger().log("Expired token")
+        structlog.get_logger().msg("Expired token")
         raise NotLoggedIn()
     except jwt.InvalidTokenError:
-        structlog.get_logger().log("Invalid token")
+        structlog.get_logger().msg("Invalid token")
         raise BadRequest("Could not decode token")
     return refresh_token
 
@@ -297,6 +297,6 @@ def access_token_from_refresh_token(
         access_token,
         get_access_token_jwt_secret(),
         algorithm='HS256',
-    ).decode('ascii')
+    )
 
     return raw_access_token

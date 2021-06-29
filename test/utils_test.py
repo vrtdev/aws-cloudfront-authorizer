@@ -61,7 +61,7 @@ def test_refresh_token_expired_token():
         },
         'secret',
         algorithm='HS256',
-    ).decode('ascii')
+    )
     with mock.patch('src.utils.get_refresh_token_jwt_secret', return_value="secret"):
         with pytest.raises(utils.NotLoggedIn):
             token = utils.get_refresh_token({
@@ -78,7 +78,7 @@ def test_refresh_token_valid_token():
         in_token,
         'secret',
         algorithm='HS256',
-    ).decode('ascii')
+    )
     with mock.patch('src.utils.get_refresh_token_jwt_secret', return_value="secret"):
         token = utils.get_refresh_token({
             'headers': {

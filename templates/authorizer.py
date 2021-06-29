@@ -2,7 +2,7 @@
 Authorizer stack.
 """
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
-    Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3, If, dynamodb
+    Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3, dynamodb
 import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
@@ -18,6 +18,8 @@ template = Template()
 custom_resources.use_custom_resources_stack_name_parameter(template)
 
 template.set_transform('AWS::Serverless-2016-10-31')
+
+# Parameters
 
 param_s3_bucket_name = template.add_parameter(Parameter(
     "S3BucketName",
@@ -61,33 +63,40 @@ param_use_cert = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(param_use_cert, "Use TLS certificate")
 
-param_auto_use_ef_idp = template.add_parameter(Parameter(
-    "AutoUseEFIDP",
+adfs_metadata_url = template.add_parameter(Parameter(
+    "AdfsMetadataUrl",
     Type=constants.STRING,
-    Description="autoselect External Federated Identity Provider for Cognito authentication",
-    AllowedValues=['yes', 'no'],
-    Default='yes',
+    Default='',
 ))
+template.set_parameter_label(adfs_metadata_url, "ADFS Metadata Url")
 
-AUTO_USE_EF_IDP = template.add_condition(
-    "AutoUseEFIDPCond",
-    Equals(Ref(param_auto_use_ef_idp), 'yes')
+
+cognito_stack = template.add_parameter(Parameter(
+    "CognitoStack",
+    Type=constants.STRING,
+    Description="StackName of the UserPool stack",
+))
+template.set_parameter_label(cognito_stack, "Name of the UserPool stack")
+
+identity_pool_providers = template.add_parameter(Parameter(
+    "IdentityProviders",
+    Type=constants.COMMA_DELIMITED_LIST,
+    Description="Comma delimited list of identity pool providers to enable in the AppClient. Available: 'AzureAD', 'adfs', 'COGNITO'",
+    Default='',
+))
+template.set_parameter_label(
+    identity_pool_providers,
+    "Comma delimited list of identity pool providers to enable in the AppClient. Available: 'AzureAD', 'adfs', 'COGNITO'"
 )
 
-ef_idp_name = template.add_parameter(Parameter(
-    "EFIDPName",
+lambda_idp_name = template.add_parameter(Parameter(
+    "LambdaIDPName",
     Type=constants.STRING,
-    Default='adfs',
+    Description="Identity Provider Name for Lambda use. One of: 'AzureAD', 'adfs', 'COGNITO'"
 ))
-template.set_parameter_label(ef_idp_name, "External Federated Identity Provider Name")
+template.set_parameter_label(lambda_idp_name, "Identity Provider Name for Lambda use. One of: 'AzureAD', 'adfs', 'COGNITO'")
 
-
-ef_idp_metadata_url = template.add_parameter(Parameter(
-    "EFIDPMetadataUrl",
-    Type=constants.STRING,
-    Default='https://adfs.example.com/FederationMetadata/2007-06/FederationMetadata.xml',
-))
-template.set_parameter_label(ef_idp_metadata_url, "External Federated Identity Provider Metadata Url")
+# Resources
 
 cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
 
@@ -103,13 +112,14 @@ cognito_user_pool_domain = template.add_resource(custom_resources.cognito.UserPo
     # Domain=auto-generated
 ))
 
-extenal_federated_identity_provider = template.add_resource(custom_resources.cognito.UserPoolIdentityProvider(
-    "EFIdentityProvider",
+adfs_provider_name = 'adfs'
+adfs_identity_provider = template.add_resource(custom_resources.cognito.UserPoolIdentityProvider(
+    "AdfsIdentityProvider",
     UserPoolId=Ref(cognito_user_pool),
-    ProviderName=ef_idp_name,
+    ProviderName=adfs_provider_name,
     ProviderType='SAML',
     ProviderDetails={
-        'MetadataURL': Ref(ef_idp_metadata_url),
+        'MetadataURL': Ref(adfs_metadata_url),
     },
     AttributeMapping={
         'email': 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
@@ -147,8 +157,8 @@ cognito_user_pool_client = template.add_resource(custom_resources.cognito.UserPo
     AllowedOAuthFlows=["code"],
     AllowedOAuthScopes=["openid", "email", "profile", "aws.cognito.signin.user.admin"],
     AllowedOAuthFlowsUserPoolClient=True,
-    SupportedIdentityProviders=["COGNITO", ef_idp_name],
-    DependsOn=[extenal_federated_identity_provider.title],  # No automatic dependency
+    SupportedIdentityProviders=["COGNITO", adfs_provider_name],
+    DependsOn=[adfs_identity_provider.title],  # No automatic dependency
     GenerateSecret=True,
 ))
 
@@ -381,7 +391,7 @@ common_lambda_options = {
             "COGNITO_DOMAIN_PREFIX": GetAtt(cognito_user_pool_domain, 'Domain'),
             "COGNITO_CLIENT_ID": Ref(cognito_user_pool_client),
             "COGNITO_CLIENT_SECRET": GetAtt(cognito_user_pool_client, 'ClientSecret'),
-            "COGNITO_EF_IDP_NAME": If(AUTO_USE_EF_IDP, ef_idp_name, 'COGNITO'),
+            "COGNITO_EF_IDP_NAME": Ref(lambda_idp_name),
             "DOMAIN_NAME": Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
             "CONFIG_BUCKET": Ref(config_bucket),
         }

@@ -66,7 +66,6 @@ def lint(ctx, filename=None, envdir='venv', noglob=False):
 
 
 @task(help={
-    'docs': "Remove generated docs",
     'verbose': "Show which files are being removed.",
     'compiled': 'Also clean up compiled python files.',
 })

@@ -50,7 +50,7 @@ def handler(event, context) -> dict:
         },
         get_csrf_jwt_secret(),
         algorithm='HS256',
-    ).decode('utf-8')
+    )
 
     with open(os.path.join(os.path.dirname(__file__), 'index.html')) as f:
         html = f.read()
