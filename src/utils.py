@@ -297,6 +297,6 @@ def access_token_from_refresh_token(
         access_token,
         get_access_token_jwt_secret(),
         algorithm='HS256',
-    ).decode('ascii')
+    )
 
     return raw_access_token

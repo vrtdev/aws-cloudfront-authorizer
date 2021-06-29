@@ -137,7 +137,7 @@ def handler(event, context) -> dict:
         refresh_token,
         get_refresh_token_jwt_secret(),
         algorithm='HS256',
-    ).decode('ascii')
+    )
 
     structlog.get_logger().msg("Cognito Code exchanged succesfully, issuing refresh_token",
                                refresh_token=refresh_token)  # Don't log signed token, only payload

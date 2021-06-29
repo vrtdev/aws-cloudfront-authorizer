@@ -117,5 +117,5 @@ def test_sub_delegate():
             'body': body,
         }, None)
         assert 200 == resp['statusCode']
-        delegate_token = jwt.decode(resp['body'], 'secret', verify=False)
+        delegate_token = jwt.decode(resp['body'], 'secret', algorithms=["HS256"], options={"verify_signature": False})
         assert 'test1' in delegate_token['sub']

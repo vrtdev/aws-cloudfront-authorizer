@@ -48,7 +48,7 @@ def test_jwt_parsing():
 
     def jwt_decode(*args, **kwargs):
         # Don't verify expired tokens
-        kwargs['verify'] = False
+        kwargs['options'] = { "verify_signature": False }
         return jwt_decode_original(*args, **kwargs)
 
     with mock.patch('src.cognito_utils.get_jwt_keys', return_value=jwk), \

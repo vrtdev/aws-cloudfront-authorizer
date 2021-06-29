@@ -2,8 +2,7 @@
 Authorizer stack.
 """
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
-    Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3, dynamodb, \
-    ImportValue
+    Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3, dynamodb
 import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
@@ -13,7 +12,6 @@ import cfnutils.mappings
 import cfnutils.kms
 import cfnutils.output
 
-from custom_resources.cognito import UserPoolClient
 
 template = Template()
 
@@ -162,34 +160,6 @@ cognito_user_pool_client = template.add_resource(custom_resources.cognito.UserPo
     SupportedIdentityProviders=["COGNITO", adfs_provider_name],
     DependsOn=[adfs_identity_provider.title],  # No automatic dependency
     GenerateSecret=True,
-))
-
-# Use existing UserPool
-
-user_pool_client = template.add_resource(UserPoolClient(
-    "UserPoolClient",
-    UserPoolId=ImportValue(Join('-', [Ref(cognito_stack), "UserPoolId"])),
-    ClientName=Ref("AWS::StackName"),
-    AllowedOAuthFlows=["code"],
-    AllowedOAuthScopes=["openid", "email", "profile", "aws.cognito.signin.user.admin"],
-    AllowedOAuthFlowsUserPoolClient=True,
-    GenerateSecret=True,
-    CallbackURLs=[
-        Join('', [
-            'https://',
-            Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
-            '/authenticate',
-        ]),
-    ],
-    SupportedIdentityProviders=Ref(identity_pool_providers),
-    # AccessTokenValidity=Ref(access_token_validity),
-    # IdTokenValidity=Ref(id_token_validity),
-    # RefreshTokenValidity=Ref(refresh_token_validity),
-    # TokenValidityUnits=cognito.TokenValidityUnits(
-    #     AccessToken="hours",
-    #     IdToken="hours",
-    #     RefreshToken="days",
-    # ),
 ))
 
 config_bucket = template.add_resource(s3.Bucket(

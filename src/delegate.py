@@ -73,9 +73,9 @@ def handler(event, context) -> dict:
             }
 
     elif event['httpMethod'] == 'POST':
-        structlog.get_logger().log("Validating POST request", body=event['body'])
+        structlog.get_logger().msg("Validating POST request", body=event['body'])
         values = urllib.parse.parse_qs(event['body'], strict_parsing=True)
-        structlog.get_logger().log("Decoded body", body=values)
+        structlog.get_logger().msg("Decoded body", body=values)
 
         try:
             exp = int(values['exp'][0])
@@ -109,12 +109,12 @@ def handler(event, context) -> dict:
             'azp': refresh_token['azp'],  # Authorized Party
             'sub': refresh_token.get('sub', []) + [subject],  # subject
         }
-        structlog.get_logger().log("Issuing JWT", jwt=delegate_token)
+        structlog.get_logger().msg("Issuing JWT", jwt=delegate_token)
         raw_delegate_token = jwt.encode(
             delegate_token,
             get_grant_jwt_secret(),
             algorithm='HS256',
-        ).decode('ascii')
+        )
 
         return {
             'statusCode': 200,

@@ -13,9 +13,9 @@ structlog.configure(processors=[structlog.processors.JSONRenderer()])
 def handler(event, context) -> dict:
     del context  # unused
 
-    structlog.get_logger().log("Validating POST request", body=event['body'])
+    structlog.get_logger().msg("Validating POST request", body=event['body'])
     values = urllib.parse.parse_qs(event['body'], strict_parsing=True)
-    structlog.get_logger().log("Decoded body", body=values)
+    structlog.get_logger().msg("Decoded body", body=values)
 
     try:
         csrf = values['CSRF'][0]
