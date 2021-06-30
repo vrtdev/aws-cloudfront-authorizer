@@ -13,8 +13,6 @@ import cfnutils.mappings
 import cfnutils.kms
 import cfnutils.output
 
-from custom_resources.cognito import UserPoolClient
-
 template = Template()
 
 custom_resources.use_custom_resources_stack_name_parameter(template)
@@ -96,7 +94,7 @@ template.set_parameter_label(lambda_idp_name, "Identity Provider Name for Lambda
 
 cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
 
-user_pool_client = template.add_resource(UserPoolClient(
+user_pool_client = template.add_resource(custom_resources.cognito.UserPoolClient(
     "UserPoolClient",
     UserPoolId=ImportValue(Join('-', [Ref(cognito_stack), "UserPoolId"])),
     ClientName=Ref("AWS::StackName"),
