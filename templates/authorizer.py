@@ -2,7 +2,8 @@
 Authorizer stack.
 """
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
-    Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, cognito, kms, iam, s3, dynamodb
+    Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, kms, iam, s3, dynamodb, \
+    ImportValue
 import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
@@ -12,6 +13,7 @@ import cfnutils.mappings
 import cfnutils.kms
 import cfnutils.output
 
+from custom_resources.cognito import UserPoolClient
 
 template = Template()
 
@@ -63,18 +65,11 @@ param_use_cert = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(param_use_cert, "Use TLS certificate")
 
-adfs_metadata_url = template.add_parameter(Parameter(
-    "AdfsMetadataUrl",
-    Type=constants.STRING,
-    Default='',
-))
-template.set_parameter_label(adfs_metadata_url, "ADFS Metadata Url")
-
-
 cognito_stack = template.add_parameter(Parameter(
     "CognitoStack",
     Type=constants.STRING,
-    Description="StackName of the UserPool stack",
+    Description="Name of the UserPool Cloudformation stack",
+    Default='vrt-dpc-infra-cognito-userpool-vrt-prod',
 ))
 template.set_parameter_label(cognito_stack, "Name of the UserPool stack")
 
@@ -82,7 +77,7 @@ identity_pool_providers = template.add_parameter(Parameter(
     "IdentityProviders",
     Type=constants.COMMA_DELIMITED_LIST,
     Description="Comma delimited list of identity pool providers to enable in the AppClient. Available: 'AzureAD', 'adfs', 'COGNITO'",
-    Default='',
+    Default='AzureAD',
 ))
 template.set_parameter_label(
     identity_pool_providers,
@@ -92,7 +87,8 @@ template.set_parameter_label(
 lambda_idp_name = template.add_parameter(Parameter(
     "LambdaIDPName",
     Type=constants.STRING,
-    Description="Identity Provider Name for Lambda use. One of: 'AzureAD', 'adfs', 'COGNITO'"
+    Description="Identity Provider Name for Lambda use. One of: 'AzureAD', 'adfs', 'COGNITO'",
+    Default='AzureAD',
 ))
 template.set_parameter_label(lambda_idp_name, "Identity Provider Name for Lambda use. One of: 'AzureAD', 'adfs', 'COGNITO'")
 
@@ -100,30 +96,30 @@ template.set_parameter_label(lambda_idp_name, "Identity Provider Name for Lambda
 
 cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
 
-cognito_user_pool = template.add_resource(cognito.UserPool(
-    "CognitoUserPool",
-    UserPoolName=Sub("StagingAccess${AWS::StackName}"),
-    UserPoolTags=GetAtt(cloudformation_tags, 'TagDict'),
-))
-
-cognito_user_pool_domain = template.add_resource(custom_resources.cognito.UserPoolDomain(
-    "CognitoUserPoolDomain",
-    UserPoolId=Ref(cognito_user_pool),
-    # Domain=auto-generated
-))
-
-adfs_provider_name = 'adfs'
-adfs_identity_provider = template.add_resource(custom_resources.cognito.UserPoolIdentityProvider(
-    "AdfsIdentityProvider",
-    UserPoolId=Ref(cognito_user_pool),
-    ProviderName=adfs_provider_name,
-    ProviderType='SAML',
-    ProviderDetails={
-        'MetadataURL': Ref(adfs_metadata_url),
-    },
-    AttributeMapping={
-        'email': 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
-    },
+user_pool_client = template.add_resource(UserPoolClient(
+    "UserPoolClient",
+    UserPoolId=ImportValue(Join('-', [Ref(cognito_stack), "UserPoolId"])),
+    ClientName=Ref("AWS::StackName"),
+    AllowedOAuthFlows=["code"],
+    AllowedOAuthScopes=["openid", "email", "profile", "aws.cognito.signin.user.admin"],
+    AllowedOAuthFlowsUserPoolClient=True,
+    GenerateSecret=True,
+    CallbackURLs=[
+        Join('', [
+            'https://',
+            Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
+            '/authenticate',
+        ]),
+    ],
+    SupportedIdentityProviders=Ref(identity_pool_providers),
+    # AccessTokenValidity=Ref(access_token_validity),
+    # IdTokenValidity=Ref(id_token_validity),
+    # RefreshTokenValidity=Ref(refresh_token_validity),
+    # TokenValidityUnits=cognito.TokenValidityUnits(
+    #     AccessToken="hours",
+    #     IdToken="hours",
+    #     RefreshToken="days",
+    # ),
 ))
 
 # Output for IDP configuration:
@@ -131,7 +127,7 @@ template.add_output(Output(
     'SamlUrl',
     Value=Join('', [
         "https://",
-        GetAtt(cognito_user_pool_domain, 'Domain'),
+        ImportValue(Join('-', [Ref(cognito_stack), "UserPoolDomain"])),
         ".auth.",
         Ref(AWS_REGION),
         ".amazoncognito.com/saml2/idpresponse"
@@ -140,26 +136,7 @@ template.add_output(Output(
 ))
 template.add_output(Output(
     "Urn",
-    Value=Sub("urn:amazon:cognito:sp:${{{id}}}".format(id=cognito_user_pool.title)),
-))
-
-cognito_user_pool_client = template.add_resource(custom_resources.cognito.UserPoolClient(
-    "CognitoUserPoolClient",
-    UserPoolId=Ref(cognito_user_pool),
-    ClientName="vrt-authorizer",
-    CallbackURLs=[
-        Join('', [
-            'https://',
-            Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
-            '/authenticate',
-        ]),
-    ],
-    AllowedOAuthFlows=["code"],
-    AllowedOAuthScopes=["openid", "email", "profile", "aws.cognito.signin.user.admin"],
-    AllowedOAuthFlowsUserPoolClient=True,
-    SupportedIdentityProviders=["COGNITO", adfs_provider_name],
-    DependsOn=[adfs_identity_provider.title],  # No automatic dependency
-    GenerateSecret=True,
+    Value=Join(':', ['urn:amazon:cognito:sp', ImportValue(Join('-', [Ref(cognito_stack), "UserPoolId"]))])
 ))
 
 config_bucket = template.add_resource(s3.Bucket(
@@ -387,10 +364,10 @@ common_lambda_options = {
     'CodeUri': serverless.S3Location('unused', Bucket=Ref(param_s3_bucket_name), Key=Ref(param_s3_key)),
     'Environment': awslambda.Environment(
         Variables={
-            "COGNITO_USER_POOL_ID": Ref(cognito_user_pool),
-            "COGNITO_DOMAIN_PREFIX": GetAtt(cognito_user_pool_domain, 'Domain'),
-            "COGNITO_CLIENT_ID": Ref(cognito_user_pool_client),
-            "COGNITO_CLIENT_SECRET": GetAtt(cognito_user_pool_client, 'ClientSecret'),
+            "COGNITO_USER_POOL_ID": ImportValue(Join('-', [Ref(cognito_stack), "UserPoolId"])),
+            "COGNITO_DOMAIN_PREFIX": ImportValue(Join('-', [Ref(cognito_stack), "UserPoolDomain"])),
+            "COGNITO_CLIENT_ID": Ref(user_pool_client),
+            "COGNITO_CLIENT_SECRET": GetAtt(user_pool_client, 'ClientSecret'),
             "COGNITO_EF_IDP_NAME": Ref(lambda_idp_name),
             "DOMAIN_NAME": Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
             "CONFIG_BUCKET": Ref(config_bucket),
