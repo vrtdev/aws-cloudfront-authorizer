@@ -176,7 +176,7 @@ async function validate_token(config, raw_token, hostname) {
         );
         jwt_secret = await get_jwt_secret;
     } catch(e) {
-        throw InternalServerError(e);
+        throw new InternalServerError(e);
     }
 
     let token;
