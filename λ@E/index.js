@@ -175,6 +175,8 @@ function waitFor(millSeconds) {
     });
 }
 
+const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1) + min)
+
 class InternalServerError extends Error {}
 class InvalidToken extends Error {}  // token is badly signed or expired
 class BadToken extends Error {}  // token does not meet requirements
@@ -193,7 +195,8 @@ async function validate_token(config, raw_token, hostname, nthTry = 2) {
                 throw new InternalServerError(e);
             }
             console.log("Retrying JWT validation", nthTry, "time");
-            await waitFor(800);
+            const delayInMiliseconds = Math.max(Math.min(Math.pow(2, nthTry) + randInt(nthTry, -nthTry), 1000), 400)
+            await waitFor(delayInMiliseconds);
             return validate_token(config, raw_token, hostname, nthTry - 1);
         } else {
             throw new InternalServerError(e);
