@@ -164,10 +164,23 @@ function render_cookie_header_value(cookies) {
     return cookies_array.join('; ');
 }
 
+/**
+ * Util function to return a promise which is resolved in provided milliseconds
+ */
+function waitFor(millSeconds) {
+    return new Promise((resolve, _reject) => {
+        setTimeout(() => {
+            resolve();
+        }, millSeconds);
+    });
+}
+
+const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1) + min)
+
 class InternalServerError extends Error {}
 class InvalidToken extends Error {}  // token is badly signed or expired
 class BadToken extends Error {}  // token does not meet requirements
-async function validate_token(config, raw_token, hostname) {
+async function validate_token(config, raw_token, hostname, nthTry = 2) {
     let jwt_secret;
     try {
         const get_jwt_secret = await get_jwt_secret_promise(  // may throw
@@ -176,7 +189,19 @@ async function validate_token(config, raw_token, hostname) {
         );
         jwt_secret = await get_jwt_secret;
     } catch(e) {
-        throw new InternalServerError(e);
+        if (e instanceof ThrottlingException) {
+            // statements to handle ThrottlingException exceptions
+            // Retry mechanism inspired by https://tusharsharma.dev/posts/retry-design-pattern-with-js-promises
+            if (nthTry === 0) {
+                throw new InternalServerError(e);
+            }
+            console.log("Retrying JWT validation", nthTry, "time");
+            const delayInMiliseconds = Math.max(Math.min(Math.pow(2, nthTry) + randInt(nthTry, -nthTry), 1000), 400)
+            await waitFor(delayInMiliseconds);
+            return validate_token(config, raw_token, hostname, nthTry - 1);
+        } else {
+            throw new InternalServerError(e);
+        }
     }
 
     let token;
