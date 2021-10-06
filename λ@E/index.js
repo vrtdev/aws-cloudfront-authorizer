@@ -189,7 +189,7 @@ async function validate_token(config, raw_token, hostname, nthTry = 2) {
         );
         jwt_secret = await get_jwt_secret;
     } catch(e) {
-        if (e.name == 'ThrottlingException') {
+        if (e.name === 'ThrottlingException') {
             // statements to handle ThrottlingException exceptions
             // Retry mechanism inspired by https://tusharsharma.dev/posts/retry-design-pattern-with-js-promises
             if (nthTry === 0) {
