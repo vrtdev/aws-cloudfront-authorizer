@@ -191,6 +191,7 @@ async function validate_token(config, raw_token, hostname, nthTry = 2) {
     } catch(e) {
         if (e instanceof ThrottlingException) {
             // statements to handle ThrottlingException exceptions
+            // Retry mechanism inspired by https://tusharsharma.dev/posts/retry-design-pattern-with-js-promises
             if (nthTry === 0) {
                 throw new InternalServerError(e);
             }
