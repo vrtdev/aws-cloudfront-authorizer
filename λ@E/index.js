@@ -164,10 +164,21 @@ function render_cookie_header_value(cookies) {
     return cookies_array.join('; ');
 }
 
+/**
+ * Util function to return a promise which is resolved in provided milliseconds
+ */
+function waitFor(millSeconds) {
+    return new Promise((resolve, _reject) => {
+        setTimeout(() => {
+            resolve();
+        }, millSeconds);
+    });
+}
+
 class InternalServerError extends Error {}
 class InvalidToken extends Error {}  // token is badly signed or expired
 class BadToken extends Error {}  // token does not meet requirements
-async function validate_token(config, raw_token, hostname) {
+async function validate_token(config, raw_token, hostname, nthTry = 2) {
     let jwt_secret;
     try {
         const get_jwt_secret = await get_jwt_secret_promise(  // may throw
@@ -176,7 +187,17 @@ async function validate_token(config, raw_token, hostname) {
         );
         jwt_secret = await get_jwt_secret;
     } catch(e) {
-        throw new InternalServerError(e);
+        if (e instanceof ThrottlingException) {
+            // statements to handle ThrottlingException exceptions
+            if (nthTry === 0) {
+                throw new InternalServerError(e);
+            }
+            console.log("Retrying JWT validation", nthTry, "time");
+            await waitFor(800);
+            return validate_token(config, raw_token, hostname, nthTry - 1);
+        } else {
+            throw new InternalServerError(e);
+        }
     }
 
     let token;
