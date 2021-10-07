@@ -23,7 +23,6 @@ def handler(event, context) -> dict:
             csrf,
             key=get_csrf_jwt_secret(),
             algorithms=['HS256'],
-            verify=True,
         )
         now = time.time()
         assert csrf['iat'] >= now - 300

@@ -236,7 +236,6 @@ def parse_raw_refresh_token(raw_refresh_token: str) -> dict:
             raw_refresh_token,
             key=get_refresh_token_jwt_secret(),
             algorithms=['HS256'],
-            verify=True,
         )
         structlog.get_logger().msg("Valid refresh_token found", jwt=refresh_token)
     except jwt.ExpiredSignatureError:
