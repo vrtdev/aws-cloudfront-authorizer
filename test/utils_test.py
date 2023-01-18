@@ -55,8 +55,8 @@ def test_refresh_token_expired_token():
     now = time.time()
     raw_token = jwt.encode(
         {
-            'iat': now,
-            'exp': now-1,
+            'iat': now-1,
+            'exp': now-2,
             'azp': 'test',
         },
         'secret',
@@ -73,7 +73,7 @@ def test_refresh_token_expired_token():
 
 def test_refresh_token_valid_token():
     now = time.time()
-    in_token = {'iat': now, 'exp': now + 5, 'azp': 'test', }
+    in_token = {'iat': now-1, 'exp': now + 5, 'azp': 'test', }
     raw_token = jwt.encode(
         in_token,
         'secret',
