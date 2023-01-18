@@ -357,7 +357,7 @@ template.add_resource(iam.PolicyType(
 ))
 
 common_lambda_options = {
-    'Runtime': 'python3.6',
+    'Runtime': 'python3.9',
     'Timeout': 10,  # Cold start sometimes takes longer than the default 3 seconds
     'CodeUri': serverless.S3Location('unused', Bucket=Ref(param_s3_bucket_name), Key=Ref(param_s3_key)),
     'Environment': awslambda.Environment(
