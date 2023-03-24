@@ -22,6 +22,8 @@ class Config:
         self.parameter_store_region = 'eu-west-1'
         self.parameter_store_parameter_name = '/authorizer/jwt-secret'
 
+        self.parameter_store_master_name = '/authorizer/master-token'
+
         self.set_cookie_path = '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220/set-cookie'
 
         self.cookie_name_refresh_token = 'refresh_token'
@@ -257,7 +259,7 @@ def get_refresh_token(event) -> dict:
     return parse_raw_refresh_token(raw_refresh_token)  # may raise
 
 
-def get_domains():
+def get_domains() -> typing.List[str]:
     domains = []
     scan_paginator = dynamodb_client.get_paginator('scan')
     response_iterator = scan_paginator.paginate(

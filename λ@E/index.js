@@ -60,6 +60,8 @@ async function get_config_(context) {
         'parameter_store_region': 'eu-west-1',
         'parameter_store_parameter_name': '/authorizer/jwt-secret',
 
+        'parameter_store_master_name': '/authorizer/master-token',
+
         'set_cookie_path': '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220/set-cookie',
         'cookie_name_access_token': 'authorizer_access',
         'cookie_name_no_redirect': 'authorizer_no_redirect',

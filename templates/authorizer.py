@@ -1,9 +1,7 @@
-"""
-Authorizer stack.
-"""
+"""Authorizer stack."""
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
     Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, kms, iam, s3, dynamodb, \
-    ImportValue
+    ImportValue, events
 import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
@@ -59,7 +57,7 @@ param_use_cert = template.add_parameter(Parameter(
     AllowedValues=['yes', 'no'],
     Default='no',  # Default to no, so new stacks requets, but don't use certs
     # This avoids stacks failing since the cert is not approved yet
-    Description="Use TLS certificate"
+    Description="Use TLS certificate",
 ))
 template.set_parameter_label(param_use_cert, "Use TLS certificate")
 
@@ -79,7 +77,7 @@ identity_pool_providers = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(
     identity_pool_providers,
-    "Comma delimited list of identity pool providers to enable in the AppClient. Available: 'AzureAD', 'adfs', 'COGNITO'"
+    "Comma delimited list of identity pool providers to enable in the AppClient. Available: 'AzureAD', 'adfs', 'COGNITO'",
 )
 
 lambda_idp_name = template.add_parameter(Parameter(
@@ -89,6 +87,14 @@ lambda_idp_name = template.add_parameter(Parameter(
     Default='AzureAD',
 ))
 template.set_parameter_label(lambda_idp_name, "Identity Provider Name for Lambda use. One of: 'AzureAD', 'adfs', 'COGNITO'")
+
+master_token_allowed_decryption_role = template.add_parameter(Parameter(
+    "MasterTokenAllowedDecryptionRole",
+    Type=constants.STRING,
+    Description="AWS ARN of role allowed to decrypt authorizer master token",
+    Default='',
+))
+template.set_parameter_label(master_token_allowed_decryption_role, "AWS ARN of role allowed to decrypt authorizer master token")
 
 # Resources
 
@@ -128,13 +134,13 @@ template.add_output(Output(
         ImportValue(Join('-', [Ref(cognito_stack), "UserPoolDomain"])),
         ".auth.",
         Ref(AWS_REGION),
-        ".amazoncognito.com/saml2/idpresponse"
+        ".amazoncognito.com/saml2/idpresponse",
     ]),
     Description='redirect or sign-in URL',
 ))
 template.add_output(Output(
     "Urn",
-    Value=Join(':', ['urn:amazon:cognito:sp', ImportValue(Join('-', [Ref(cognito_stack), "UserPoolId"]))])
+    Value=Join(':', ['urn:amazon:cognito:sp', ImportValue(Join('-', [Ref(cognito_stack), "UserPoolId"]))]),
 ))
 
 config_bucket = template.add_resource(s3.Bucket(
@@ -153,13 +159,13 @@ domain_table = template.add_resource(dynamodb.Table(
         dynamodb.AttributeDefinition(
             AttributeName="domain",
             AttributeType="S",
-        )
+        ),
     ],
     KeySchema=[
         dynamodb.KeySchema(
             AttributeName="domain",
             KeyType="HASH",
-        )
+        ),
     ],
 ))
 template.add_output(Output(
@@ -176,13 +182,13 @@ group_table = template.add_resource(dynamodb.Table(
         dynamodb.AttributeDefinition(
             AttributeName="group",
             AttributeType="S",
-        )
+        ),
     ],
     KeySchema=[
         dynamodb.KeySchema(
             AttributeName="group",
             KeyType="HASH",
-        )
+        ),
     ],
 ))
 template.add_output(Output(
@@ -204,12 +210,12 @@ lambda_role = template.add_resource(iam.Role(
                 "Principal": {
                     "Service": [
                         "lambda.amazonaws.com",
-                        "edgelambda.amazonaws.com"
-                    ]
+                        "edgelambda.amazonaws.com",
+                    ],
                 },
-                "Action": "sts:AssumeRole"
-            }
-        ]
+                "Action": "sts:AssumeRole",
+            },
+        ],
     },
     Policies=[
         iam.Policy(
@@ -222,18 +228,18 @@ lambda_role = template.add_resource(iam.Role(
                         "Action": [
                             "logs:CreateLogGroup",
                             "logs:CreateLogStream",
-                            "logs:PutLogEvents"
+                            "logs:PutLogEvents",
                         ],
-                        "Resource": "*"
+                        "Resource": "*",
                     },
                     {
                         # Allow lambda to read its own configuration
                         # Needed for Lambda@Edge to pass parameters
                         "Effect": "Allow",
                         "Action": [
-                            "lambda:GetFunction"
+                            "lambda:GetFunction",
                         ],
-                        "Resource": "*"
+                        "Resource": "*",
                     },
                     {
                         # Read configuration
@@ -348,12 +354,118 @@ template.add_resource(iam.PolicyType(
             "Resource": [
                 Sub(
                     "arn:aws:ssm:${{AWS::Region}}:${{AWS::AccountId}}:parameter${{{param}}}".format(
-                        param=p.title
+                        param=p.title,
                     ))
                 for p in [jwt_secret_parameter]
             ],
-        }]
-    }
+        }],
+    },
+))
+
+master_key = template.add_resource(kms.Key(
+    "MasterKey",
+    Description=Sub("Key for Authorizer master token parameter in ${AWS::StackName}"),
+    KeyPolicy={
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "Enable IAM User Permissions",
+                "Effect": "Allow",
+                "Principal": {
+                    "AWS": Sub("arn:aws:iam::${AWS::AccountId}:root")},
+                "Action": cfnutils.kms.IAM_SAFE_ACTIONS,
+                "Resource": "*",
+            },
+            # It's not possible to create a key you cannot edit yourself, however we can make sure
+            # That only root can edit the key -- if we're deploying this stack with the root account
+            {
+                "Sid": "Allow updates to the policy",
+                "Effect": "Allow",
+                "Principal": {
+                    "AWS": Sub("arn:aws:iam::${AWS::AccountId}:root")},
+                "Action": "kms:PutKeyPolicy",
+                "Resource": "*",
+                # "Condition": If(is_root_deploy, kms_helpers.IAM_ONLY_ROOT,
+                #                 Ref(AWS_NO_VALUE)),
+                # TODO: add is_root_deploy parameter & condition, and uncomment the above
+            },
+            {
+                "Sid": "Allow encrypting things",
+                "Effect": "Allow",
+                "Principal": {"AWS": GetAtt(lambda_role, 'Arn')},
+                "Action": "kms:Encrypt",
+                "Resource": "*",
+            },
+            {
+                "Sid": "Allow decrypting things",
+                "Effect": "Allow",
+                "Principal": {"AWS": Ref(master_token_allowed_decryption_role)},
+                "Action": cfnutils.kms.IAM_DECRYPT_ACTIONS,
+                "Resource": "*",  # The policy is applied to only this key
+            },
+        ],
+    },
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
+))
+
+master_key_alias = template.add_resource(kms.Alias(
+    "MasterKeyAlias",
+    AliasName=Sub('alias/${AWS::StackName}/master-key'),
+    TargetKeyId=Ref(master_key),
+))
+
+master_token_parameter = template.add_resource(custom_resources.ssm.Parameter(
+    "MasterTokenParameter",
+    Name=Sub('/${AWS::StackName}/master-token'),
+    Type="SecureString",
+    KeyId=Ref(master_key),
+    Value="",  # To be filled in by automated function
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
+))
+
+template.add_resource(iam.PolicyType(
+    "MasterTokenParamWritePermission",
+    Roles=[Ref(lambda_role)],
+    PolicyName='ssm-parameter-write',
+    PolicyDocument={
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Action": [
+                "ssm:PutParameter",
+            ],
+            "Effect": "Allow",
+            "Resource": [
+                Sub(
+                    "arn:aws:ssm:${{AWS::Region}}:${{AWS::AccountId}}:parameter${{{param}}}".format(
+                        param=p.title,
+                    ))
+                for p in [master_token_parameter]
+            ],
+        }],
+    },
+))
+
+template.add_resource(iam.PolicyType(
+    "MasterTokenParamReadPermission",
+    Roles=[Ref(master_token_allowed_decryption_role)],
+    PolicyName='ssm-parameter-read',
+    PolicyDocument={
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Action": [
+                "ssm:GetParameter",
+                "ssm:GetParameters",
+            ],
+            "Effect": "Allow",
+            "Resource": [
+                Sub(
+                    "arn:aws:ssm:${{AWS::Region}}:${{AWS::AccountId}}:parameter${{{param}}}".format(
+                        param=p.title,
+                    ))
+                for p in [master_token_parameter]
+            ],
+        }],
+    },
 ))
 
 common_lambda_options = {
@@ -369,7 +481,7 @@ common_lambda_options = {
             "COGNITO_EF_IDP_NAME": Ref(lambda_idp_name),
             "DOMAIN_NAME": Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
             "CONFIG_BUCKET": Ref(config_bucket),
-        }
+        },
     ),
     'Role': GetAtt(lambda_role, 'Arn'),
 }
@@ -473,6 +585,32 @@ template.add_resource(serverless.Function(
     },
 ))
 
+generate_master_function = template.add_resource(serverless.Function(
+    "GenerateMaster",
+    **common_lambda_options,
+    Handler='generate_master.handler',
+    Events={
+        'GenerateMaster': serverless.ApiEvent(
+            'unused',
+            Path='/generate_master',
+            Method='GET',
+        ),
+    },
+))
+
+template.add_resource(events.Rule(
+    "GenerateMasterSchedule",
+    Description="Schedule to trigger daily master token refreshes",
+    ScheduleExpression="cron(0 9 * * ? *)",
+    State="ENABLED",
+    Targets=[
+        events.Target(
+            Arn=GetAtt(generate_master_function, 'Arn'),
+            Id="GenerateMasterFunctionTargetId",
+        ),
+    ],
+))
+
 template.add_output(Output(
     "ApiDomain",
     Description='Domain name of the API',
@@ -553,6 +691,8 @@ config_object = template.add_resource(custom_resources.s3.Object(
     Body={  # Default settings
         'parameter_store_region': Ref(AWS_REGION),
         'parameter_store_parameter_name': jwt_secret_parameter.properties['Name'],
+
+        'parameter_store_master_name': master_token_parameter.properties['Name'],
 
         'authorize_url': Join('', [
             'https://',
