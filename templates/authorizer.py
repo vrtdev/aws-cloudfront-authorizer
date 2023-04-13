@@ -1,7 +1,7 @@
 """Authorizer stack."""
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
     Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, kms, iam, s3, dynamodb, \
-    ImportValue, events, Not
+    ImportValue, Not
 import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
