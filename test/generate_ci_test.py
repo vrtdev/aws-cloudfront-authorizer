@@ -1,3 +1,4 @@
+import json
 from unittest import mock
 
 import jwt
@@ -11,7 +12,7 @@ def test_post():
             mock.patch('generate_ci.get_access_token_jwt_secret', return_value='secret'):
         resp = generate_ci.handler({
             'httpMethod': 'POST',
-            'body': body,
+            'body': json.dumps(body),
         }, None)
         assert 200 == resp['statusCode']
         ci_token = jwt.decode(resp['body'], 'secret', algorithms=["HS256"], options={"verify_signature": False})
@@ -25,7 +26,7 @@ def test_post_too_long():
             mock.patch('generate_ci.get_access_token_jwt_secret', return_value='secret'):
         resp = generate_ci.handler({
             'httpMethod': 'POST',
-            'body': body,
+            'body': json.dumps(body),
         }, None)
         assert 400 == resp['statusCode']
 
@@ -36,7 +37,7 @@ def test_post_domain_outside_list():
             mock.patch('generate_ci.get_access_token_jwt_secret', return_value='secret'):
         resp = generate_ci.handler({
             'httpMethod': 'POST',
-            'body': body,
+            'body': json.dumps(body),
         }, None)
         assert 400 == resp['statusCode']
 
@@ -47,6 +48,6 @@ def test_post_no_subject():
             mock.patch('generate_ci.get_access_token_jwt_secret', return_value='secret'):
         resp = generate_ci.handler({
             'httpMethod': 'POST',
-            'body': body,
+            'body': json.dumps(body),
         }, None)
         assert 400 == resp['statusCode']

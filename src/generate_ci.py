@@ -1,3 +1,4 @@
+import json
 import re
 import time
 
@@ -11,7 +12,7 @@ def handler(event, context) -> dict:
     assert event['httpMethod'] == 'POST'
 
     structlog.get_logger().msg("Processing POST request", body=event)
-    values = event['body']
+    values = json.loads(event['body'])
 
     try:
         exp_in = int(values['exp_in'])
