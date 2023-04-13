@@ -7,8 +7,7 @@ import structlog
 from utils import get_access_token_jwt_secret, bad_request, is_allowed_domain
 
 def handler(event, context) -> dict:
-    # unused
-    del context
+    del context  # unused
     assert event['httpMethod'] == 'POST'
 
     structlog.get_logger().msg("Processing POST request", body=event)

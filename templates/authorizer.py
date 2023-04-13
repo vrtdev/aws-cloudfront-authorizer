@@ -89,7 +89,7 @@ lambda_idp_name = template.add_parameter(Parameter(
 template.set_parameter_label(lambda_idp_name, "Identity Provider Name for Lambda use. One of: 'AzureAD', 'adfs', 'COGNITO'")
 
 ci_shared_resources_role = template.add_parameter(Parameter(
-    "JenkinsSharedResourcesRole",
+    "CiSharedResourcesRole",
     Type=constants.COMMA_DELIMITED_LIST,
     Default="",
     Description="ARN of the role of the ci instance. Leave empty to skip ci function/role creation.",
