@@ -1,7 +1,7 @@
 """Authorizer stack."""
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
     Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, kms, iam, s3, dynamodb, \
-    ImportValue, Not
+    ImportValue, Not, AWSProperty, PropsDictType
 import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
@@ -480,6 +480,23 @@ template.add_resource(serverless.Function(
     },
 ))
 
+
+# Fixed in https://github.com/cloudtools/troposphere/pull/2145
+class ApiFunctionAuth(AWSProperty):
+    """Custom class to fix bug in troposphere use of ApiAuth in ApiEvent context."""
+
+    props: PropsDictType = {
+        "ApiKeyRequired": (bool, False),
+        "AuthorizationScopes": (list, False),
+        "Authorizer": (str, False),
+        "InvokeRole": (str, False),
+        "ResourcePolicy": (serverless.ResourcePolicyStatement, False),
+    }
+
+
+serverless.ApiEvent.props['Auth'] = (ApiFunctionAuth, False)
+
+
 generate_ci_function = template.add_resource(serverless.Function(
     "GenerateCI",
     **common_lambda_options,
@@ -487,8 +504,9 @@ generate_ci_function = template.add_resource(serverless.Function(
     Events={
         'GenerateCi': serverless.ApiEvent(
             'unused',
-            Auth=serverless.Auth(
-                DefaultAuthorizer='AWS_IAM',
+            Auth=ApiFunctionAuth(
+                Authorizer='AWS_IAM',
+                InvokeRole='CALLER_CREDENTIALS',
             ),
             Path='/generate_ci',
             Method='POST',
@@ -526,7 +544,7 @@ ci_role = template.add_resource(iam.Role(
                     Verb='POST',
                     Path='generate_ci',
                 ),
-            }]
+            }],
         },
     )],
     Condition=create_ci_function,
