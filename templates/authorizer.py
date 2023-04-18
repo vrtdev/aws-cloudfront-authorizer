@@ -94,8 +94,16 @@ ci_shared_resources_role = template.add_parameter(Parameter(
     Default="",
     Description="ARN of the role of the ci instance. Leave empty to skip ci function/role creation.",
 ))
-template.set_parameter_label(ci_shared_resources_role, "ARN of the role of the ci instance. Leave empty to skip role creation,")
+template.set_parameter_label(ci_shared_resources_role, "ARN of the role of the ci instance. Leave empty to skip function/role creation.")
 create_ci_function = template.add_condition("CreateCiFunction", Not(Equals(Join("", Ref(ci_shared_resources_role)), "")))
+
+ci_role_path = template.add_parameter(Parameter(
+    "CiRolePath",
+    Type=constants.STRING,
+    Default="/",
+    Description="Path to create the ci role in. Defaults to '/'",
+))
+template.set_parameter_label(ci_role_path, "Path to create the ci role in. Defaults to '/'")
 
 # Resources
 
@@ -518,6 +526,7 @@ generate_ci_function = template.add_resource(serverless.Function(
 ci_role = template.add_resource(iam.Role(
     "CiRole",
     Description="Role to allow CI token generation",
+    Path=Ref(ci_role_path),
     AssumeRolePolicyDocument={
         "Version": "2012-10-17",
         "Statement": [{
