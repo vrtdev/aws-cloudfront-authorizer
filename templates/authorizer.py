@@ -537,26 +537,46 @@ ci_role = template.add_resource(iam.Role(
             "Action": "sts:AssumeRole",
         }],
     },
-    Policies=[iam.Policy(
-        PolicyName="invoke-policy",
-        PolicyDocument={
-            "Version": "2012-10-17",
-            "Statement": [{
-                "Effect": "Allow",
-                "Action": "execute-api:Invoke",
-                "Resource": Sub(
-                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/${Stage}/${Verb}/${Path}",
-                    ApiId=Ref('ServerlessRestApi'),  # Default name of Serverless generated gateway
-                    Stage='Prod',  # Default name of Serverless generated Stage
-                    # Path this is hard to extract from the method resource
-                    # Only extracting the method does not have a lot of advantages
-                    Verb='POST',
-                    Path='generate_ci',
-                ),
-            }],
-        },
-    )],
+    Policies=[
+        iam.Policy(
+            PolicyName="invoke-api-policy",
+            PolicyDocument={
+                "Version": "2012-10-17",
+                "Statement": [{
+                    "Effect": "Allow",
+                    "Action": "execute-api:Invoke",
+                    "Resource": Sub(
+                        "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/${Stage}/${Verb}/${Path}",
+                        ApiId=Ref('ServerlessRestApi'),  # Default name of Serverless generated gateway
+                        Stage='Prod',  # Default name of Serverless generated Stage
+                        # Path this is hard to extract from the method resource
+                        # Only extracting the method does not have a lot of advantages
+                        Verb='POST',
+                        Path='generate_ci',
+                    ),
+                }],
+            },
+        ),
+        iam.Policy(
+            PolicyName="invoke-lambda-policy",
+            PolicyDocument={
+                "Version": "2012-10-17",
+                "Statement": [{
+                    "Effect": "Allow",
+                    "Action": "aws:InvokeLambda",
+                    "Resource": GetAtt(generate_ci_function, "Arn"),
+                }],
+            },
+        ),
+    ],
     Condition=create_ci_function,
+))
+
+template.add_resource(awslambda.Permission(
+    "CiFunctionPermission",
+    Action="lambda:InvokeFunction",
+    FunctionName=Ref(generate_ci_function),
+    Principal=GetAtt(ci_role, "Arn"),
 ))
 
 template.add_output(Output(
