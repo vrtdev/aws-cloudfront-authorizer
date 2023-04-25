@@ -257,7 +257,7 @@ def get_refresh_token(event) -> dict:
     return parse_raw_refresh_token(raw_refresh_token)  # may raise
 
 
-def get_domains():
+def get_domains() -> typing.List[str]:
     domains = []
     scan_paginator = dynamodb_client.get_paginator('scan')
     response_iterator = scan_paginator.paginate(

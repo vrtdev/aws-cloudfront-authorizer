@@ -1,9 +1,7 @@
-"""
-Authorizer stack.
-"""
+"""Authorizer stack."""
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
     Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, kms, iam, s3, dynamodb, \
-    ImportValue
+    ImportValue, Not, AWSProperty, PropsDictType
 import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
@@ -59,7 +57,7 @@ param_use_cert = template.add_parameter(Parameter(
     AllowedValues=['yes', 'no'],
     Default='no',  # Default to no, so new stacks requets, but don't use certs
     # This avoids stacks failing since the cert is not approved yet
-    Description="Use TLS certificate"
+    Description="Use TLS certificate",
 ))
 template.set_parameter_label(param_use_cert, "Use TLS certificate")
 
@@ -79,7 +77,7 @@ identity_pool_providers = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(
     identity_pool_providers,
-    "Comma delimited list of identity pool providers to enable in the AppClient. Available: 'AzureAD', 'adfs', 'COGNITO'"
+    "Comma delimited list of identity pool providers to enable in the AppClient. Available: 'AzureAD', 'adfs', 'COGNITO'",
 )
 
 lambda_idp_name = template.add_parameter(Parameter(
@@ -89,6 +87,23 @@ lambda_idp_name = template.add_parameter(Parameter(
     Default='AzureAD',
 ))
 template.set_parameter_label(lambda_idp_name, "Identity Provider Name for Lambda use. One of: 'AzureAD', 'adfs', 'COGNITO'")
+
+ci_shared_resources_role = template.add_parameter(Parameter(
+    "CiSharedResourcesRole",
+    Type=constants.COMMA_DELIMITED_LIST,
+    Default="",
+    Description="ARN of the role of the ci instance. Leave empty to skip ci function/role creation.",
+))
+template.set_parameter_label(ci_shared_resources_role, "ARN of the role of the ci instance. Leave empty to skip function/role creation.")
+create_ci_function = template.add_condition("CreateCiFunction", Not(Equals(Join("", Ref(ci_shared_resources_role)), "")))
+
+ci_role_path = template.add_parameter(Parameter(
+    "CiRolePath",
+    Type=constants.STRING,
+    Default="/",
+    Description="Path to create the ci role in. Defaults to '/'",
+))
+template.set_parameter_label(ci_role_path, "Path to create the ci role in. Defaults to '/'")
 
 # Resources
 
@@ -128,13 +143,13 @@ template.add_output(Output(
         ImportValue(Join('-', [Ref(cognito_stack), "UserPoolDomain"])),
         ".auth.",
         Ref(AWS_REGION),
-        ".amazoncognito.com/saml2/idpresponse"
+        ".amazoncognito.com/saml2/idpresponse",
     ]),
     Description='redirect or sign-in URL',
 ))
 template.add_output(Output(
     "Urn",
-    Value=Join(':', ['urn:amazon:cognito:sp', ImportValue(Join('-', [Ref(cognito_stack), "UserPoolId"]))])
+    Value=Join(':', ['urn:amazon:cognito:sp', ImportValue(Join('-', [Ref(cognito_stack), "UserPoolId"]))]),
 ))
 
 config_bucket = template.add_resource(s3.Bucket(
@@ -153,13 +168,13 @@ domain_table = template.add_resource(dynamodb.Table(
         dynamodb.AttributeDefinition(
             AttributeName="domain",
             AttributeType="S",
-        )
+        ),
     ],
     KeySchema=[
         dynamodb.KeySchema(
             AttributeName="domain",
             KeyType="HASH",
-        )
+        ),
     ],
 ))
 template.add_output(Output(
@@ -176,13 +191,13 @@ group_table = template.add_resource(dynamodb.Table(
         dynamodb.AttributeDefinition(
             AttributeName="group",
             AttributeType="S",
-        )
+        ),
     ],
     KeySchema=[
         dynamodb.KeySchema(
             AttributeName="group",
             KeyType="HASH",
-        )
+        ),
     ],
 ))
 template.add_output(Output(
@@ -204,12 +219,12 @@ lambda_role = template.add_resource(iam.Role(
                 "Principal": {
                     "Service": [
                         "lambda.amazonaws.com",
-                        "edgelambda.amazonaws.com"
-                    ]
+                        "edgelambda.amazonaws.com",
+                    ],
                 },
-                "Action": "sts:AssumeRole"
-            }
-        ]
+                "Action": "sts:AssumeRole",
+            },
+        ],
     },
     Policies=[
         iam.Policy(
@@ -222,18 +237,18 @@ lambda_role = template.add_resource(iam.Role(
                         "Action": [
                             "logs:CreateLogGroup",
                             "logs:CreateLogStream",
-                            "logs:PutLogEvents"
+                            "logs:PutLogEvents",
                         ],
-                        "Resource": "*"
+                        "Resource": "*",
                     },
                     {
                         # Allow lambda to read its own configuration
                         # Needed for Lambda@Edge to pass parameters
                         "Effect": "Allow",
                         "Action": [
-                            "lambda:GetFunction"
+                            "lambda:GetFunction",
                         ],
-                        "Resource": "*"
+                        "Resource": "*",
                     },
                     {
                         # Read configuration
@@ -348,12 +363,12 @@ template.add_resource(iam.PolicyType(
             "Resource": [
                 Sub(
                     "arn:aws:ssm:${{AWS::Region}}:${{AWS::AccountId}}:parameter${{{param}}}".format(
-                        param=p.title
+                        param=p.title,
                     ))
                 for p in [jwt_secret_parameter]
             ],
-        }]
-    }
+        }],
+    },
 ))
 
 common_lambda_options = {
@@ -369,7 +384,7 @@ common_lambda_options = {
             "COGNITO_EF_IDP_NAME": Ref(lambda_idp_name),
             "DOMAIN_NAME": Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
             "CONFIG_BUCKET": Ref(config_bucket),
-        }
+        },
     ),
     'Role': GetAtt(lambda_role, 'Arn'),
 }
@@ -471,6 +486,97 @@ template.add_resource(serverless.Function(
             Method='GET',
         ),
     },
+))
+
+
+# Fixed in https://github.com/cloudtools/troposphere/pull/2145
+class ApiFunctionAuth(AWSProperty):
+    """Custom class to fix bug in troposphere use of ApiAuth in ApiEvent context."""
+
+    props: PropsDictType = {
+        "ApiKeyRequired": (bool, False),
+        "AuthorizationScopes": (list, False),
+        "Authorizer": (str, False),
+        "InvokeRole": (str, False),
+        "ResourcePolicy": (serverless.ResourcePolicyStatement, False),
+    }
+
+
+serverless.ApiEvent.props['Auth'] = (ApiFunctionAuth, False)
+
+
+generate_ci_function = template.add_resource(serverless.Function(
+    "GenerateCI",
+    **common_lambda_options,
+    Handler='generate_ci.handler',
+    Events={
+        'GenerateCi': serverless.ApiEvent(
+            'unused',
+            Auth=ApiFunctionAuth(
+                Authorizer='AWS_IAM',
+                InvokeRole='CALLER_CREDENTIALS',
+            ),
+            Path='/generate_ci',
+            Method='POST',
+        ),
+    },
+    Condition=create_ci_function,
+))
+
+ci_role = template.add_resource(iam.Role(
+    "CiRole",
+    Description="Role to allow CI token generation",
+    Path=Ref(ci_role_path),
+    AssumeRolePolicyDocument={
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Sid": "",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": Ref(ci_shared_resources_role)},
+            "Action": "sts:AssumeRole",
+        }],
+    },
+    Policies=[
+        iam.Policy(
+            PolicyName="invoke-api-policy",
+            PolicyDocument={
+                "Version": "2012-10-17",
+                "Statement": [{
+                    "Effect": "Allow",
+                    "Action": "execute-api:Invoke",
+                    "Resource": Sub(
+                        "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/${Stage}/${Verb}/${Path}",
+                        ApiId=Ref('ServerlessRestApi'),  # Default name of Serverless generated gateway
+                        Stage='Prod',  # Default name of Serverless generated Stage
+                        # Path this is hard to extract from the method resource
+                        # Only extracting the method does not have a lot of advantages
+                        Verb='POST',
+                        Path='generate_ci',
+                    ),
+                }],
+            },
+        ),
+        iam.Policy(
+            PolicyName="invoke-lambda-policy",
+            PolicyDocument={
+                "Version": "2012-10-17",
+                "Statement": [{
+                    "Effect": "Allow",
+                    "Action": "aws:InvokeLambda",
+                    "Resource": GetAtt(generate_ci_function, "Arn"),
+                }],
+            },
+        ),
+    ],
+    Condition=create_ci_function,
+))
+
+template.add_resource(awslambda.Permission(
+    "CiFunctionPermission",
+    Action="lambda:InvokeFunction",
+    FunctionName=Ref(generate_ci_function),
+    Principal=GetAtt(ci_role, "Arn"),
 ))
 
 template.add_output(Output(
