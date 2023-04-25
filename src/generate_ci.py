@@ -7,11 +7,13 @@ import structlog
 
 from utils import get_access_token_jwt_secret, bad_request, is_allowed_domain
 
+
 def handler(event, context) -> dict:
     del context  # unused
     assert event['httpMethod'] == 'POST'
 
     structlog.get_logger().msg("Processing POST request", body=event)
+    caller = event['requestContext']['identity']['caller']
     values = json.loads(event['body'])
 
     try:
@@ -37,7 +39,7 @@ def handler(event, context) -> dict:
     ci_token = {
         'iat': now,
         'exp': now + exp_in,
-        'azp': "authorizer",
+        'azp': caller,
         'domains': list(domains),
         'sub': subject,
     }
