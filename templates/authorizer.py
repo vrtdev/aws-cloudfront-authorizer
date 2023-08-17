@@ -489,22 +489,6 @@ template.add_resource(serverless.Function(
 ))
 
 
-# Fixed in https://github.com/cloudtools/troposphere/pull/2145
-class ApiFunctionAuth(AWSProperty):
-    """Custom class to fix bug in troposphere use of ApiAuth in ApiEvent context."""
-
-    props: PropsDictType = {
-        "ApiKeyRequired": (bool, False),
-        "AuthorizationScopes": (list, False),
-        "Authorizer": (str, False),
-        "InvokeRole": (str, False),
-        "ResourcePolicy": (serverless.ResourcePolicyStatement, False),
-    }
-
-
-serverless.ApiEvent.props['Auth'] = (ApiFunctionAuth, False)
-
-
 generate_ci_function = template.add_resource(serverless.Function(
     "GenerateCI",
     **common_lambda_options,
@@ -512,7 +496,7 @@ generate_ci_function = template.add_resource(serverless.Function(
     Events={
         'GenerateCi': serverless.ApiEvent(
             'unused',
-            Auth=ApiFunctionAuth(
+            Auth=serverless.ApiFunctionAuth(
                 Authorizer='AWS_IAM',
                 InvokeRole='CALLER_CREDENTIALS',
             ),
