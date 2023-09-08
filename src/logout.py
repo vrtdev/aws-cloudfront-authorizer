@@ -3,19 +3,20 @@ import time
 import urllib.parse
 
 import jwt
-import structlog
+from aws_lambda_powertools import Logger
+from aws_lambda_powertools.utilities.typing import LambdaContext
 
 from utils import generate_cookie, get_config, bad_request, get_csrf_jwt_secret, get_raw_refresh_token, NotLoggedIn
 
-structlog.configure(processors=[structlog.processors.JSONRenderer()])
+logger = Logger()
 
+def handler(event, context: LambdaContext) -> dict:
+    request_ip = event['requestContext']['identity']['sourceIp']
+    logger.append_keys(request_id=context.aws_request_id, request_ip=request_ip)
 
-def handler(event, context) -> dict:
-    del context  # unused
-
-    structlog.get_logger().msg("Validating POST request", body=event['body'])
+    logger.info({"message": "Processing POST request", "body": event['body']})
     values = urllib.parse.parse_qs(event['body'], strict_parsing=True)
-    structlog.get_logger().msg("Decoded body", body=values)
+    logger.info({"body": values})
 
     try:
         csrf = values['CSRF'][0]

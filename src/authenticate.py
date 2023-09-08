@@ -6,14 +6,14 @@ import urllib.parse
 import jwt
 import requests
 import requests.auth
-import structlog
 
 from cognito_utils import validate_cognito_id_token
 from utils import bad_request, internal_server_error, get_refresh_token_jwt_secret, get_state_jwt_secret, \
     generate_cookie, get_config
+from aws_lambda_powertools import Logger
+from aws_lambda_powertools.utilities.typing import LambdaContext
 
-structlog.configure(processors=[structlog.processors.JSONRenderer()])
-
+logger = Logger()
 
 class InternalServerError(Exception): pass
 class BadRequest(Exception): pass
@@ -41,7 +41,7 @@ def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
         'redirect_uri': redirect_uri,
         'code': cognito_code,
     }
-    structlog.get_logger().msg("Validating Cognito code")
+    logger.info("Validating Cognito code")
     try:
         token_response = requests.post(
             endpointurl,
@@ -49,13 +49,13 @@ def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
             auth=requests.auth.HTTPBasicAuth(client_id, client_secret)
         )
     except requests.exceptions.ConnectionError as e:
-        structlog.get_logger().msg("Connection error to Cognito", exception=e)
+        logger.exception({"message": "Connection error to Cognito", "exception": e})
         raise InternalServerError()
 
     if token_response.status_code != 200:
         try:
             error_response = token_response.json()
-            structlog.get_logger().msg("Cognito error response", reply=error_response)
+            logger.info({"message": "Cognito error response", "reply": error_response})
 
             if error_response['error'] == 'invalid_grant':
                 raise BadRequest(error_response['error'])
@@ -64,16 +64,16 @@ def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
         except (BadRequest, InternalServerError):
             raise
         except Exception as e:
-            structlog.get_logger().msg(
-                "Uncaught error",
-                cognito_reply=token_response.text,
-                exception=e,
-                backtrace=traceback.format_exc()
-            )
+            logger.exception({
+                "message": "Uncaught error",
+                "cognito_reply": token_response.text,
+                "exception": e,
+                "backtrace": traceback.format_exc()
+            })
             raise InternalServerError() from e
 
     cognito_token = token_response.json()
-    structlog.get_logger().msg("Received Cognito tokens")
+    logger.info("Received Cognito tokens")
 
     try:
         cognito_id_token = validate_cognito_id_token(
@@ -83,19 +83,20 @@ def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
             client_id=client_id,
         )
     except requests.exceptions.RequestException as e:
-        structlog.get_logger().msg("Connection error to Cognito", exception=e)
+        logger.exception({"message": "Connection error to Cognito", "exception": e})
         raise InternalServerError()
     except jwt.InvalidTokenError as e:
-        structlog.get_logger().msg("id_token invalid", exception=e)
+        logger.exception({"message": "id_token invalid", "exception": e})
         raise InternalServerError()
 
-    structlog.get_logger().msg("Cognito ID token is valid")
+    logger.info("Cognito ID token is valid")
 
     return cognito_id_token
 
 
-def handler(event, context) -> dict:
-    del context  # unused
+def handler(event, context: LambdaContext) -> dict:
+    request_ip = event['requestContext']['identity']['sourceIp']
+    logger.append_keys(request_id=context.aws_request_id, request_ip=request_ip)
 
     try:
         cognito_code = event['queryStringParameters']['code']
@@ -139,8 +140,8 @@ def handler(event, context) -> dict:
         algorithm='HS256',
     )
 
-    structlog.get_logger().msg("Cognito Code exchanged succesfully, issuing refresh_token",
-                               refresh_token=refresh_token)  # Don't log signed token, only payload
+    # Don't log signed token, only payload
+    logger.info({"message": "Cognito Code exchanged succesfully, issuing refresh_token", "refresh_token": refresh_token})
 
     try:
         if state['action'] == 'index':
@@ -153,7 +154,7 @@ def handler(event, context) -> dict:
         else:
             raise ValueError(f"Invalid action `{state['action']}`")
     except (KeyError, ValueError) as e:
-        structlog.get_logger().msg("state is invalid", exception=e)
+        logger.exception({"message": "state is invalid", "exception": e})
         return internal_server_error()
 
     return {

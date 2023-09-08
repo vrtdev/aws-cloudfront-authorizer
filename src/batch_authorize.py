@@ -1,16 +1,17 @@
 import json
 
-import structlog
-
 from utils import bad_request, NotLoggedIn, BadRequest, \
     InternalServerError, internal_server_error, get_refresh_token, get_domains, \
     access_token_from_refresh_token
+from aws_lambda_powertools import Logger
+from aws_lambda_powertools.utilities.typing import LambdaContext
 
-structlog.configure(processors=[structlog.processors.JSONRenderer()])
+logger = Logger()
 
 
-def handler(event, context) -> dict:
-    del context  # unused
+def handler(event, context: LambdaContext) -> dict:
+    request_ip = event['requestContext']['identity']['sourceIp']
+    logger.append_keys(request_id=context.aws_request_id, request_ip=request_ip)
 
     try:
         refresh_token = get_refresh_token(event)

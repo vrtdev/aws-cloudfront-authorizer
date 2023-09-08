@@ -5,17 +5,19 @@ import time
 import urllib.parse
 
 import jwt
-import structlog
 
 from utils import redirect_to_cognito, get_refresh_token, NotLoggedIn, BadRequest, \
     bad_request, InternalServerError, internal_server_error, \
     get_grant_jwt_secret, get_state_jwt_secret, get_config, is_allowed_domain, dynamodb_client, get_domains
+from aws_lambda_powertools import Logger
+from aws_lambda_powertools.utilities.typing import LambdaContext
 
-structlog.configure(processors=[structlog.processors.JSONRenderer()])
+logger = Logger()
 
 
-def handler(event, context) -> dict:
-    del context  # unused
+def handler(event, context: LambdaContext) -> dict:
+    request_ip = event['requestContext']['identity']['sourceIp']
+    logger.append_keys(request_id=context.aws_request_id, request_ip=request_ip)
 
     try:
         refresh_token = get_refresh_token(event)
@@ -35,7 +37,7 @@ def handler(event, context) -> dict:
         return internal_server_error('', e)
 
     if event['httpMethod'] == 'GET':
-        structlog.get_logger().msg("Rendering index HTML")
+        logger.info("Rendering index HTML")
 
         if 'domains' in refresh_token:
             # User wants to further narrow his access
@@ -54,7 +56,7 @@ def handler(event, context) -> dict:
                     try:
                         groups[group_entry['group']['S']] = group_entry['domains']['SS']
                     except KeyError as e:
-                        structlog.get_logger().msg("Invalid group in DynamoDB: " + repr(group_entry))
+                        logger.info("Invalid group in DynamoDB: " + repr(group_entry))
                         pass
 
         with open(os.path.join(os.path.dirname(__file__), 'delegate.html')) as f:
@@ -73,9 +75,9 @@ def handler(event, context) -> dict:
             }
 
     elif event['httpMethod'] == 'POST':
-        structlog.get_logger().msg("Validating POST request", body=event['body'])
+        logger.info({"message": "Validating POST request", "body": event['body']})
         values = urllib.parse.parse_qs(event['body'], strict_parsing=True)
-        structlog.get_logger().msg("Decoded body", body=values)
+        logger.info({"message": "Decoded body", "body": values})
 
         try:
             exp = int(values['exp'][0])
@@ -109,7 +111,7 @@ def handler(event, context) -> dict:
             'azp': refresh_token['azp'],  # Authorized Party
             'sub': refresh_token.get('sub', []) + [subject],  # subject
         }
-        structlog.get_logger().msg("Issuing JWT", jwt=delegate_token)
+        logger.info({"message": "Issuing JWT", "jwt": delegate_token})
         raw_delegate_token = jwt.encode(
             delegate_token,
             get_grant_jwt_secret(),

@@ -3,16 +3,19 @@ import re
 import time
 
 import jwt
-import structlog
 
 from utils import get_access_token_jwt_secret, bad_request, is_allowed_domain
+from aws_lambda_powertools import Logger
+from aws_lambda_powertools.utilities.typing import LambdaContext
 
+logger = Logger()
 
-def handler(event, context) -> dict:
-    del context  # unused
+def handler(event, context: LambdaContext) -> dict:
+    request_ip = event['requestContext']['identity']['sourceIp']
+    logger.append_keys(request_id=context.aws_request_id, request_ip=request_ip)
     assert event['httpMethod'] == 'POST'
 
-    structlog.get_logger().msg("Processing POST request", body=event)
+    logger.info({"message": "Processing POST request", "body": event})
     caller = event['requestContext']['identity']['caller']
     values = json.loads(event['body'])
 
@@ -43,7 +46,7 @@ def handler(event, context) -> dict:
         'domains': list(domains),
         'sub': subject,
     }
-    structlog.get_logger().msg("Issuing JWT", jwt=ci_token)
+    logger.info({"message": "Issuing JWT", "jwt": ci_token})
     raw_ci_token = jwt.encode(
         ci_token,
         get_access_token_jwt_secret(),
