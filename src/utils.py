@@ -238,7 +238,7 @@ def parse_raw_refresh_token(raw_refresh_token: str) -> dict:
             key=get_refresh_token_jwt_secret(),
             algorithms=['HS256'],
         )
-        logger.exception({"message": "Valid refresh_token found", "jwt": refresh_token})
+        logger.info({"message": "Valid refresh_token found", "jwt": refresh_token})
     except jwt.ExpiredSignatureError:
         logger.exception("Expired token")
         raise NotLoggedIn()
