@@ -384,6 +384,7 @@ common_lambda_options = {
             "COGNITO_EF_IDP_NAME": Ref(lambda_idp_name),
             "DOMAIN_NAME": Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
             "CONFIG_BUCKET": Ref(config_bucket),
+            "POWERTOOLS_SERVICE_NAME": "authorizer",
         },
     ),
     'Role': GetAtt(lambda_role, 'Arn'),

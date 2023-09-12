@@ -10,8 +10,9 @@ from urllib.parse import urlencode
 import boto3
 import cachetools
 import jwt
-import structlog
+from aws_lambda_powertools import Logger
 
+logger = Logger()
 DOMAIN_KEY = 'domains.json'
 CONFIG_KEY = 'config.json'
 
@@ -141,11 +142,11 @@ def generate_cookie(key: str, value: str, max_age: int = None, path: str = None)
 
 
 def bad_request(public_details: str = '', private_details=None) -> dict:
-    structlog.get_logger().msg(
-        "Rendering Bad request",
-        public_details=public_details,
-        private_details=private_details,
-    )
+    logger.error({
+        "message": "Rendering Bad request",
+        "public_details": public_details,
+        "private_details": private_details,
+    })
     return {
         'statusCode': 400,
         'headers': {
@@ -156,11 +157,11 @@ def bad_request(public_details: str = '', private_details=None) -> dict:
 
 
 def internal_server_error(public_details: str = '', private_details=None) -> dict:
-    structlog.get_logger().msg(
-        "Rendering Internal Server Error",
-        public_details=public_details,
-        private_details=private_details,
-    )
+    logger.error({
+        "message": "Rendering Internal Server Error",
+        "public_details": public_details,
+        "private_details": private_details,
+    })
     return {
         'statusCode': 500,
         'headers': {
@@ -194,7 +195,7 @@ def redirect_to_cognito(state: str = '') -> dict:
     """
     location = cognito_url(state)
 
-    structlog.get_logger().msg("Rendering Redirect to Cognito", state=state, location=location)
+    logger.info({"message": "Rendering Redirect to Cognito", "state": state, "location": location})
     return {
         'statusCode': 302,
         'headers': {
@@ -225,7 +226,7 @@ def get_raw_refresh_token(event) -> str:
         request_cookies = cookies.BaseCookie(headers['cookie'][0])
         raw_refresh_token = request_cookies[get_config().cookie_name_refresh_token].value
     except (KeyError, IndexError):
-        structlog.get_logger().msg("No refresh_token cookie found")
+        logger.exception("No refresh_token cookie found")
         raise NotLoggedIn()
     return raw_refresh_token
 
@@ -237,12 +238,12 @@ def parse_raw_refresh_token(raw_refresh_token: str) -> dict:
             key=get_refresh_token_jwt_secret(),
             algorithms=['HS256'],
         )
-        structlog.get_logger().msg("Valid refresh_token found", jwt=refresh_token)
+        logger.info({"message": "Valid refresh_token found", "jwt": refresh_token})
     except jwt.ExpiredSignatureError:
-        structlog.get_logger().msg("Expired token")
+        logger.exception("Expired token")
         raise NotLoggedIn()
     except jwt.InvalidTokenError:
-        structlog.get_logger().msg("Invalid token")
+        logger.exception("Invalid token")
         raise BadRequest("Could not decode token")
     return refresh_token
 
@@ -268,7 +269,7 @@ def get_domains() -> typing.List[str]:
             try:
                 domains.append(domain_entry['domain']['S'])
             except KeyError:
-                structlog.get_logger().msg("Invalid domain in DynamoDB: " + repr(domain_entry))
+                logger.exception("Invalid domain in DynamoDB: " + repr(domain_entry))
                 pass
     return domains
 
