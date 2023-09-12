@@ -56,7 +56,7 @@ def handler(event, context: LambdaContext) -> dict:
                     try:
                         groups[group_entry['group']['S']] = group_entry['domains']['SS']
                     except KeyError as e:
-                        logger.info("Invalid group in DynamoDB: " + repr(group_entry))
+                        logger.exception("Invalid group in DynamoDB: " + repr(group_entry))
                         pass
 
         with open(os.path.join(os.path.dirname(__file__), 'delegate.html')) as f:

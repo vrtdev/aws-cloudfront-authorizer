@@ -42,12 +42,12 @@ def handler(event, context: LambdaContext) -> dict:
 
     # Is this domain allowed?
     if not is_allowed_domain(redirect_uri_comp.netloc):
-        logger.info(f"{redirect_uri} is not an allowed domain")
+        logger.error(f"{redirect_uri} is not an allowed domain")
         return bad_request('', f"{redirect_uri} is not an allowed domain")
 
     if 'domains' in refresh_token:  # delegated token with domain restrictions
         if redirect_uri_comp.netloc not in refresh_token['domains']:
-            logger.info(f"{redirect_uri} is not an allowed domain for this refresh token")
+            logger.error(f"{redirect_uri} is not an allowed domain for this refresh token")
             return bad_request('', f"{redirect_uri} is not an allowed domain for this refresh token")
 
     try:

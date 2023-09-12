@@ -142,7 +142,7 @@ def generate_cookie(key: str, value: str, max_age: int = None, path: str = None)
 
 
 def bad_request(public_details: str = '', private_details=None) -> dict:
-    logger.info({
+    logger.error({
         "message": "Rendering Bad request",
         "public_details": public_details,
         "private_details": private_details,
@@ -157,7 +157,7 @@ def bad_request(public_details: str = '', private_details=None) -> dict:
 
 
 def internal_server_error(public_details: str = '', private_details=None) -> dict:
-    logger.info({
+    logger.error({
         "message": "Rendering Internal Server Error",
         "public_details": public_details,
         "private_details": private_details,

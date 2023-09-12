@@ -55,7 +55,7 @@ def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
     if token_response.status_code != 200:
         try:
             error_response = token_response.json()
-            logger.info({"message": "Cognito error response", "reply": error_response})
+            logger.error({"message": "Cognito error response", "reply": error_response})
 
             if error_response['error'] == 'invalid_grant':
                 raise BadRequest(error_response['error'])
