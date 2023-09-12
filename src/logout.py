@@ -10,6 +10,7 @@ from utils import generate_cookie, get_config, bad_request, get_csrf_jwt_secret,
 
 logger = Logger()
 
+@logger.inject_lambda_context
 def handler(event, context: LambdaContext) -> dict:
     request_ip = event['requestContext']['identity']['sourceIp']
     logger.append_keys(request_id=context.aws_request_id, request_ip=request_ip)

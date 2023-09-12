@@ -10,6 +10,7 @@ from aws_lambda_powertools.utilities.typing import LambdaContext
 
 logger = Logger()
 
+@logger.inject_lambda_context
 def handler(event, context: LambdaContext) -> dict:
     request_ip = event['requestContext']['identity']['sourceIp']
     logger.append_keys(request_id=context.aws_request_id, request_ip=request_ip)

@@ -94,6 +94,7 @@ def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
     return cognito_id_token
 
 
+@logger.inject_lambda_context
 def handler(event, context: LambdaContext) -> dict:
     request_ip = event['requestContext']['identity']['sourceIp']
     logger.append_keys(request_id=context.aws_request_id, request_ip=request_ip)
