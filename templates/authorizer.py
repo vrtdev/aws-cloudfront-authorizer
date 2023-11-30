@@ -691,6 +691,14 @@ cf_distribution = template.add_resource(Distribution(
     Condition=CREATE_OWN_CLOUDFRONT,
 ))
 
+template.add_output(Output(
+    "CloudFrontID",
+    Description='CloudFront distribution ID',
+    Value=Ref(cf_distribution),
+    Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'cloudfront-id'])),
+    Condition=CREATE_OWN_CLOUDFRONT,
+))
+
 hosted_zone_map = "HostedZoneMap"
 template.add_mapping(hosted_zone_map, cfnutils.mappings.r53_hosted_zone_id())
 
