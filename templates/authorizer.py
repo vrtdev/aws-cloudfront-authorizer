@@ -682,6 +682,7 @@ cf_distribution = template.add_resource(Distribution(
                     WhitelistedNames=Ref(cookies),  # Cookies can be edited in the Cookies parameter
                 ),
             ),
+            AllowedMethods=['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT'],  # /delegate sends POST
         ),
         ViewerCertificate=ViewerCertificate(
             AcmCertificateArn=Ref(acm_cert),
