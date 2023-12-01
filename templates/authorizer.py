@@ -1,7 +1,9 @@
 """Authorizer stack."""
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
     Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, kms, iam, s3, dynamodb, \
-    ImportValue, Not
+    ImportValue, Not, And, Condition, If, AWS_NO_VALUE
+from troposphere.cloudfront import Origin, CustomOriginConfig, Distribution, \
+    DistributionConfig, ViewerCertificate, DefaultCacheBehavior, ForwardedValues, Cookies
 import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
@@ -105,6 +107,50 @@ ci_role_path = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(ci_role_path, "Path to create the ci role in. Defaults to '/'")
 
+param_create_own_cloudfront = template.add_parameter(Parameter(
+    "CreateOwnCloudFront",
+    Type=constants.STRING,
+    AllowedValues=['yes', 'no'],
+    Default='yes',
+    Description="Create own CloudFront distribution",
+))
+template.set_parameter_label(param_create_own_cloudfront, "Create own CloudFront distribution")
+
+cookies = template.add_parameter(Parameter(
+    "Cookies",
+    Type=constants.COMMA_DELIMITED_LIST,
+    Default="refresh_token",
+    Description="Comma delimited list of Cookies that will be used in cache key and forwarded to the origin. \
+        Stack will fail if list is empty while using 'Forward-list' as 'Cookie behaviour'",
+))
+template.set_parameter_label(cookies, "Comma delimited list of Cookies to forward.")
+
+use_domain_name = template.add_parameter(Parameter(
+    "UseDomainName",
+    Type=constants.STRING,
+    AllowedValues=['yes', 'no'],
+    Default='yes',
+    Description="Set 'No' to not pass aliases to CloudFront. Only useful for setting up ACM in advance of migrating "
+                "CloudFront aliases between accounts.",
+))
+
+domain_name = Join('.', [Ref(param_label), Ref(param_hosted_zone_name)])
+
+# Conditions
+
+USE_CERT = template.add_condition("UseCert", Equals(Ref(param_use_cert), 'yes'))
+CREATE_OWN_CLOUDFRONT = template.add_condition('CreateOwnCloudFront', And(
+    Condition(USE_CERT),
+    Equals(Ref(param_create_own_cloudfront), 'yes')
+))
+
+NOT_CREATE_OWN_CLOUDFRONT = template.add_condition('NotCreateOwnCloudFront', And(
+    Condition(USE_CERT),
+    Equals(Ref(param_create_own_cloudfront), 'no')
+))
+
+USE_DOMAIN_NAME = template.add_condition('UseDomainName', Equals(Ref(use_domain_name), 'yes'))
+
 # Resources
 
 cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
@@ -120,7 +166,7 @@ user_pool_client = template.add_resource(custom_resources.cognito.UserPoolClient
     CallbackURLs=[
         Join('', [
             'https://',
-            Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
+            domain_name,
             '/authenticate',
         ]),
     ],
@@ -382,7 +428,7 @@ common_lambda_options = {
             "COGNITO_CLIENT_ID": Ref(user_pool_client),
             "COGNITO_CLIENT_SECRET": GetAtt(user_pool_client, 'ClientSecret'),
             "COGNITO_EF_IDP_NAME": Ref(lambda_idp_name),
-            "DOMAIN_NAME": Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
+            "DOMAIN_NAME": domain_name,
             "CONFIG_BUCKET": Ref(config_bucket),
             "POWERTOOLS_SERVICE_NAME": "authorizer",
         },
@@ -567,7 +613,7 @@ template.add_resource(awslambda.Permission(
 template.add_output(Output(
     "ApiDomain",
     Description='Domain name of the API',
-    Value=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
+    Value=domain_name,
     Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'domain-name'])),
 ))
 
@@ -581,8 +627,8 @@ template.add_output(Output(
 
 acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCertificate(
     "AcmCert",
-    Region='us-east-1',  # Api gateway is in us-east-1
-    DomainName=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
+    Region='us-east-1',  # Api gateway/Cloudfront is in us-east-1
+    DomainName=domain_name,
     Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 template.add_output(Output(
@@ -590,14 +636,11 @@ template.add_output(Output(
     Value=GetAtt(acm_cert, "DnsRecords"),
 ))
 
-use_cert_cond = 'UseCert'
-template.add_condition(use_cert_cond, Equals(Ref(param_use_cert), 'yes'))
-
 api_domain = template.add_resource(apigateway.DomainName(
     "ApiDomain",
     CertificateArn=Ref(acm_cert),
-    DomainName=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
-    Condition=use_cert_cond,
+    DomainName=domain_name,
+    Condition=NOT_CREATE_OWN_CLOUDFRONT,
 ))
 
 api_domain_mapping = template.add_resource(apigateway.BasePathMapping(
@@ -605,7 +648,55 @@ api_domain_mapping = template.add_resource(apigateway.BasePathMapping(
     DomainName=Ref(api_domain),
     RestApiId=Ref('ServerlessRestApi'),  # Default name of Serverless generated gateway
     Stage='Prod',  # Default name of Serverless generated Stage
-    Condition=use_cert_cond,
+    Condition=NOT_CREATE_OWN_CLOUDFRONT,
+))
+
+cf_distribution = template.add_resource(Distribution(
+    "CfDistribution",
+    DistributionConfig=DistributionConfig(
+        Comment=Join('', [Ref(AWS_STACK_NAME), ' authorizer distribution']),
+        Aliases=[If(USE_DOMAIN_NAME, domain_name, Ref(AWS_NO_VALUE))],
+        Enabled=True,
+        IPV6Enabled=True,
+        HttpVersion='http2',
+        PriceClass='PriceClass_100',
+        Origins=[
+            Origin(
+                Id='default',
+                DomainName=Sub("${ApiId}.execute-api.${AWS::Region}.amazonaws.com", ApiId=Ref('ServerlessRestApi')),
+                OriginPath="/Prod",
+                CustomOriginConfig=CustomOriginConfig(
+                    HTTPPort=80,
+                    HTTPSPort=443,
+                    OriginProtocolPolicy='https-only',  # API Gateway doesn't support unencrypted (HTTP) endpoints.
+                ),
+            ),
+        ],
+        DefaultCacheBehavior=DefaultCacheBehavior(
+            ViewerProtocolPolicy='redirect-to-https',  # HTTPS required. Cookies need to be sent securely
+            TargetOriginId='default',
+            ForwardedValues=ForwardedValues(
+                QueryString=True,
+                Cookies=Cookies(
+                    Forward='whitelist',
+                    WhitelistedNames=Ref(cookies),  # Cookies can be edited in the Cookies parameter
+                ),
+            ),
+        ),
+        ViewerCertificate=ViewerCertificate(
+            AcmCertificateArn=Ref(acm_cert),
+            SslSupportMethod='sni-only',
+        ),
+    ),
+    Condition=CREATE_OWN_CLOUDFRONT,
+))
+
+template.add_output(Output(
+    "CloudFrontID",
+    Description='CloudFront distribution ID',
+    Value=Ref(cf_distribution),
+    Export=Export(Join('-', [Ref(AWS_STACK_NAME), 'cloudfront-id'])),
+    Condition=CREATE_OWN_CLOUDFRONT,
 ))
 
 hosted_zone_map = "HostedZoneMap"
@@ -614,27 +705,35 @@ template.add_mapping(hosted_zone_map, cfnutils.mappings.r53_hosted_zone_id())
 template.add_resource(route53.RecordSetType(
     "DomainA",
     AliasTarget=route53.AliasTarget(
-        DNSName=GetAtt(api_domain, 'DistributionDomainName'),
+        DNSName=If(
+            CREATE_OWN_CLOUDFRONT,
+            GetAtt(cf_distribution, 'DomainName'),
+            GetAtt(api_domain, 'DistributionDomainName'),
+        ),
         HostedZoneId=FindInMap(hosted_zone_map, Ref(AWS_REGION), 'CloudFront'),
     ),
     Comment=Sub('Default DNS for ${AWS::StackName} api'),
     HostedZoneName=Join('', [Ref(param_hosted_zone_name), '.']),
-    Name=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
+    Name=domain_name,
     Type='A',
-    Condition=use_cert_cond,
+    Condition=USE_CERT,
 ))
 
 template.add_resource(route53.RecordSetType(
     "DomainAAAA",
     AliasTarget=route53.AliasTarget(
-        DNSName=GetAtt(api_domain, 'DistributionDomainName'),
+        DNSName=If(
+            CREATE_OWN_CLOUDFRONT,
+            GetAtt(cf_distribution, 'DomainName'),
+            GetAtt(api_domain, 'DistributionDomainName'),
+        ),
         HostedZoneId=FindInMap(hosted_zone_map, Ref(AWS_REGION), 'CloudFront'),
     ),
     Comment=Sub('Default DNS for ${AWS::StackName} api'),
     HostedZoneName=Join('', [Ref(param_hosted_zone_name), '.']),
-    Name=Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
+    Name=domain_name,
     Type='AAAA',
-    Condition=use_cert_cond,
+    Condition=USE_CERT,
 ))
 
 config_object = template.add_resource(custom_resources.s3.Object(
@@ -647,7 +746,7 @@ config_object = template.add_resource(custom_resources.s3.Object(
 
         'authorize_url': Join('', [
             'https://',
-            Join('.', [Ref(param_label), Ref(param_hosted_zone_name)]),
+            domain_name,
             authorize_path,
         ]),
         'set_cookie_path': magic_path + "/set-cookie",
