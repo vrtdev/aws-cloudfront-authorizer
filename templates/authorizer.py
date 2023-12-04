@@ -139,6 +139,8 @@ domain_name = Join('.', [Ref(param_label), Ref(param_hosted_zone_name)])
 # Conditions
 
 USE_CERT = template.add_condition("UseCert", Equals(Ref(param_use_cert), 'yes'))
+USE_DOMAIN_NAME = template.add_condition('UseDomainName', Equals(Ref(use_domain_name), 'yes'))
+
 CREATE_OWN_CLOUDFRONT = template.add_condition('CreateOwnCloudFront', And(
     Condition(USE_CERT),
     Equals(Ref(param_create_own_cloudfront), 'yes')
@@ -146,10 +148,8 @@ CREATE_OWN_CLOUDFRONT = template.add_condition('CreateOwnCloudFront', And(
 
 NOT_CREATE_OWN_CLOUDFRONT = template.add_condition('NotCreateOwnCloudFront', And(
     Condition(USE_CERT),
-    Equals(Ref(param_create_own_cloudfront), 'no')
+    Equals(Ref(param_create_own_cloudfront), 'no'),
 ))
-
-USE_DOMAIN_NAME = template.add_condition('UseDomainName', Equals(Ref(use_domain_name), 'yes'))
 
 # Resources
 
