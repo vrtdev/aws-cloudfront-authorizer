@@ -1,6 +1,6 @@
 """Sigv4 Lambda@Edge stack."""
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, awslambda, iam, constants, \
-    Output, Export
+    Output, Export, If, Not, Equals
 import cfnutils.output
 
 template = Template()
@@ -22,6 +22,20 @@ param_s3_key = template.add_parameter(Parameter(
     Description="Location of the Lambda ZIP file, path",
 ))
 template.set_parameter_label(param_s3_key, "Lambda S3 key")
+
+api_id = template.add_parameter(Parameter(
+    "ApiId",
+    Default="",
+    Type=constants.STRING,
+    Description="API Gateway ID",
+))
+template.set_parameter_label(api_id, "API Gateway ID")
+
+# Conditions
+
+HAS_API_ID = template.add_condition('HasApiId', Not(Equals(Ref(api_id), '')))
+
+# Resources
 
 lambda_sigv4_exec_role = template.add_resource(iam.Role(
     "Sigv4RequestLambdaFunctionExecutionRole",
@@ -63,7 +77,11 @@ lambda_sigv4_exec_role = template.add_resource(iam.Role(
                         ],
                         "Resource": Sub(
                             "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/*/*/*",
-                            ApiId=Ref('ServerlessRestApi'),  # Default name of Serverless generated gateway
+                            ApiId=If(
+                                HAS_API_ID,
+                                Ref(api_id),
+                                '*',
+                            ),
                         ),
                     },
                 ],
