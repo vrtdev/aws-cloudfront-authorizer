@@ -3,7 +3,8 @@ from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, J
     Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, kms, iam, s3, dynamodb, \
     ImportValue, Not, And, Condition, If, AWS_NO_VALUE
 from troposphere.cloudfront import Origin, CustomOriginConfig, Distribution, \
-    DistributionConfig, ViewerCertificate, DefaultCacheBehavior, ForwardedValues, Cookies
+    DistributionConfig, ViewerCertificate, DefaultCacheBehavior, ForwardedValues, Cookies, \
+    LambdaFunctionAssociation
 import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
@@ -36,6 +37,22 @@ param_s3_key = template.add_parameter(Parameter(
     Description="Location of the Lambda ZIP file, path",
 ))
 template.set_parameter_label(param_s3_key, "Lambda S3 key")
+
+param_s3_bucket_name_sigv4 = template.add_parameter(Parameter(
+    "S3BucketNameSigv4",
+    Default="",
+    Type=constants.STRING,
+    Description="Location of the Sigv4 Lambda ZIP file, bucket name",
+))
+template.set_parameter_label(param_s3_bucket_name_sigv4, "Sigv4 Lambda S3 bucket")
+
+param_s3_key_sigv4 = template.add_parameter(Parameter(
+    "S3KeySigv4",
+    Default="",
+    Type=constants.STRING,
+    Description="Location of the Lambda ZIP file, path, of the sigv4 lambda",
+))
+template.set_parameter_label(param_s3_key_sigv4, "Sigv4 Lambda S3 key")
 
 param_label = template.add_parameter(Parameter(
     "Label",
@@ -651,6 +668,74 @@ api_domain_mapping = template.add_resource(apigateway.BasePathMapping(
     Condition=NOT_CREATE_OWN_CLOUDFRONT,
 ))
 
+lambda_sigv4_exec_role = template.add_resource(iam.Role(
+    "Sigv4RequestLambdaFunctionExecutionRole",
+    Condition=CREATE_OWN_CLOUDFRONT,
+    AssumeRolePolicyDocument={
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                # Lambda@Edge uses a different principal than normal lambda
+                "Principal": {
+                    "Service": [
+                        "lambda.amazonaws.com",
+                        "edgelambda.amazonaws.com",
+                    ],
+                },
+                "Action": "sts:AssumeRole",
+            },
+        ],
+    },
+    Policies=[
+        iam.Policy(
+            PolicyName='LambdaEdgeAccessPolicy',
+            PolicyDocument={
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "logs:CreateLogGroup",
+                            "logs:CreateLogStream",
+                            "logs:PutLogEvents",
+                        ],
+                        "Resource": Sub("arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:*"),
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "execute-api:Invoke",
+                        ],
+                        "Resource": Sub(
+                            "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/*/*/*",
+                            ApiId=Ref('ServerlessRestApi'),  # Default name of Serverless generated gateway
+                        ),
+                    },
+                ],
+            },
+        ),
+    ],
+))
+
+sigv4_function = template.add_resource(awslambda.Function(
+    "Sigv4RequestLambdaFunction",
+    Description="Lambda function signs request with AWS Signature Version 4",
+    Code=awslambda.Code(S3Bucket=Ref(param_s3_bucket_name_sigv4), S3Key=Ref(param_s3_key_sigv4)),
+    Handler="sigv4.handler",
+    MemorySize=128,
+    Role=GetAtt(lambda_sigv4_exec_role, "Arn"),
+    Runtime='nodejs20.x',
+    Condition=CREATE_OWN_CLOUDFRONT,
+))
+
+sigv4_function_version = template.add_resource(awslambda.Version(
+    "Sigv4RequestLambdaFunctionVersion",
+    FunctionName=Ref(sigv4_function),
+    Description="Sigv4 signing",
+    Condition=CREATE_OWN_CLOUDFRONT,
+))
+
 cf_distribution = template.add_resource(Distribution(
     "CfDistribution",
     DistributionConfig=DistributionConfig(
@@ -683,6 +768,13 @@ cf_distribution = template.add_resource(Distribution(
                 ),
             ),
             AllowedMethods=['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT'],  # /delegate sends POST
+            LambdaFunctionAssociations=[
+                LambdaFunctionAssociation(
+                    EventType='origin-request',
+                    LambdaFunctionARN=Ref(sigv4_function_version),
+                    IncludeBody=True,
+                ),
+            ],
         ),
         ViewerCertificate=ViewerCertificate(
             AcmCertificateArn=Ref(acm_cert),
