@@ -1,9 +1,12 @@
 """Sigv4 Lambda@Edge stack."""
 from troposphere import Template, Parameter, Ref, Sub, GetAtt, awslambda, iam, constants, \
     Output, Export, If, Not, Equals
+import custom_resources
 import cfnutils.output
 
 template = Template()
+
+custom_resources.use_custom_resources_stack_name_parameter(template)
 
 # Parameters
 
