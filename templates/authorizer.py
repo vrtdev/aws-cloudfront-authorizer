@@ -141,6 +141,7 @@ sigv4_function_version_arn = template.add_parameter(Parameter(
     Default="",
     Description="ARN of the Sigv4 function version",
 ))
+template.set_parameter_label(sigv4_function_version_arn, "ARN of the Sigv4 function version")
 
 domain_name = Join('.', [Ref(param_label), Ref(param_hosted_zone_name)])
 
