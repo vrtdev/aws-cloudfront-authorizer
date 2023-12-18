@@ -197,6 +197,7 @@ template.add_resource(route53.RecordSetType(
     HostedZoneName=Join('', [Ref(param_hosted_zone_name), '.']),
     Name=domain_name,
     Type='A',
+    Condition=use_cert_cond,
 ))
 template.add_resource(route53.RecordSetType(
     "DomainAAAA",
@@ -208,6 +209,7 @@ template.add_resource(route53.RecordSetType(
     HostedZoneName=Join('', [Ref(param_hosted_zone_name), '.']),
     Name=domain_name,
     Type='AAAA',
+    Condition=use_cert_cond,
 ))
 
 cfnutils.output.write_template_to_file(template)

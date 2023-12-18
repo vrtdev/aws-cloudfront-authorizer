@@ -63,6 +63,14 @@ param_use_cert = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(param_use_cert, "Use TLS certificate")
 
+regional_acm_cert_arn = template.add_parameter(Parameter(
+    "RegionalAcmCertArn",
+    Type=constants.STRING,
+    Default="",
+    Description="ARN of the regional certificate to use for the API Gateway",
+))
+template.set_parameter_label(regional_acm_cert_arn, "ARN of the regional certificate to use for the API Gateway")
+
 cognito_stack = template.add_parameter(Parameter(
     "CognitoStack",
     Type=constants.STRING,
@@ -125,6 +133,14 @@ cookies = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(cookies, "Comma delimited list of Cookies to forward.")
 
+headers = template.add_parameter(Parameter(
+    "Headers",
+    Type=constants.COMMA_DELIMITED_LIST,
+    Default="Authorization,Host",
+    Description="Comma delimited list of Headers that will be used in cache key and forwarded to the origin.",
+))
+template.set_parameter_label(headers, "Comma delimited list of Headers to forward.")
+
 use_domain_name = template.add_parameter(Parameter(
     "UseDomainName",
     Type=constants.STRING,
@@ -138,15 +154,20 @@ domain_name = Join('.', [Ref(param_label), Ref(param_hosted_zone_name)])
 
 # Conditions
 
+CREATE_REGIONAL_CERT = template.add_condition('CreateRegionalCert', And(
+    Equals(Ref(param_create_own_cloudfront), 'yes'),
+    Equals(Ref(regional_acm_cert_arn), ''),
+))
+
 USE_CERT = template.add_condition("UseCert", Equals(Ref(param_use_cert), 'yes'))
 CREATE_OWN_CLOUDFRONT = template.add_condition('CreateOwnCloudFront', And(
     Condition(USE_CERT),
-    Equals(Ref(param_create_own_cloudfront), 'yes')
+    Equals(Ref(param_create_own_cloudfront), 'yes'),
 ))
 
 NOT_CREATE_OWN_CLOUDFRONT = template.add_condition('NotCreateOwnCloudFront', And(
     Condition(USE_CERT),
-    Equals(Ref(param_create_own_cloudfront), 'no')
+    Equals(Ref(param_create_own_cloudfront), 'no'),
 ))
 
 USE_DOMAIN_NAME = template.add_condition('UseDomainName', Equals(Ref(use_domain_name), 'yes'))
@@ -636,11 +657,39 @@ template.add_output(Output(
     Value=GetAtt(acm_cert, "DnsRecords"),
 ))
 
+# Regional certificate for API GW
+regional_acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCertificate(
+    "RegionalAcmCert",
+    Region=Ref(AWS_REGION),
+    DomainName=domain_name,
+    Tags=GetAtt(cloudformation_tags, 'TagList'),
+    Condition=CREATE_REGIONAL_CERT,
+))
+template.add_output(Output(
+    "RegionalAcmCertDnsRecords",
+    Value=GetAtt(regional_acm_cert, "DnsRecords"),
+    Condition=CREATE_REGIONAL_CERT,
+))
+
 api_domain = template.add_resource(apigateway.DomainName(
     "ApiDomain",
-    CertificateArn=Ref(acm_cert),
+    # If we want aws to create the cloudfront, use "global" cert located in us-east-1
+    CertificateArn=If(NOT_CREATE_OWN_CLOUDFRONT, Ref(acm_cert), Ref(AWS_NO_VALUE)),
+    # If we want to create our own cloudfront, use "regional" cert created in the regional region
+    RegionalCertificateArn=If(
+        CREATE_OWN_CLOUDFRONT,
+        If(
+            CREATE_REGIONAL_CERT,
+            Ref(regional_acm_cert),
+            Ref(regional_acm_cert_arn),
+        ),
+        Ref(AWS_NO_VALUE),
+    ),
+    EndpointConfiguration=apigateway.EndpointConfiguration(
+        Types=[If(CREATE_OWN_CLOUDFRONT, 'REGIONAL', 'EDGE')],
+    ),
     DomainName=domain_name,
-    Condition=NOT_CREATE_OWN_CLOUDFRONT,
+    Condition=USE_CERT,
 ))
 
 api_domain_mapping = template.add_resource(apigateway.BasePathMapping(
@@ -648,7 +697,7 @@ api_domain_mapping = template.add_resource(apigateway.BasePathMapping(
     DomainName=Ref(api_domain),
     RestApiId=Ref('ServerlessRestApi'),  # Default name of Serverless generated gateway
     Stage='Prod',  # Default name of Serverless generated Stage
-    Condition=NOT_CREATE_OWN_CLOUDFRONT,
+    Condition=USE_CERT,
 ))
 
 cf_distribution = template.add_resource(Distribution(
@@ -663,8 +712,7 @@ cf_distribution = template.add_resource(Distribution(
         Origins=[
             Origin(
                 Id='default',
-                DomainName=Sub("${ApiId}.execute-api.${AWS::Region}.amazonaws.com", ApiId=Ref('ServerlessRestApi')),
-                OriginPath="/Prod",
+                DomainName=GetAtt(api_domain, 'RegionalDomainName'),
                 CustomOriginConfig=CustomOriginConfig(
                     HTTPPort=80,
                     HTTPSPort=443,
@@ -676,6 +724,7 @@ cf_distribution = template.add_resource(Distribution(
             ViewerProtocolPolicy='redirect-to-https',  # HTTPS required. Cookies need to be sent securely
             TargetOriginId='default',
             ForwardedValues=ForwardedValues(
+                Headers=Ref(headers),
                 QueryString=True,
                 Cookies=Cookies(
                     Forward='whitelist',
