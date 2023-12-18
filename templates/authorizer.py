@@ -150,6 +150,14 @@ use_domain_name = template.add_parameter(Parameter(
                 "CloudFront aliases between accounts.",
 ))
 
+waf_arn = template.add_parameter(Parameter(
+    "WafArn",
+    Type=constants.STRING,
+    Default="",
+    Description="ARN of the WAF to attach to the CloudFront distribution",
+))
+template.set_parameter_label(waf_arn, "ARN of the WAF to attach to the CloudFront distribution.")
+
 domain_name = Join('.', [Ref(param_label), Ref(param_hosted_zone_name)])
 
 # Conditions
@@ -171,6 +179,8 @@ NOT_CREATE_OWN_CLOUDFRONT = template.add_condition('NotCreateOwnCloudFront', And
 ))
 
 USE_DOMAIN_NAME = template.add_condition('UseDomainName', Equals(Ref(use_domain_name), 'yes'))
+
+ATTACH_WAF = template.add_condition('AttachWaf', Not(Equals(Ref(waf_arn), '')))
 
 # Resources
 
@@ -709,6 +719,7 @@ cf_distribution = template.add_resource(Distribution(
         IPV6Enabled=True,
         HttpVersion='http2',
         PriceClass='PriceClass_100',
+        WebACLId=If(ATTACH_WAF, Ref(waf_arn), Ref(AWS_NO_VALUE)),
         Origins=[
             Origin(
                 Id='default',
