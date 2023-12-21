@@ -3,7 +3,7 @@ from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, J
     Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, kms, iam, s3, dynamodb, \
     ImportValue, Not, And, Condition, If, AWS_NO_VALUE
 from troposphere.cloudfront import Origin, CustomOriginConfig, Distribution, \
-    DistributionConfig, ViewerCertificate, DefaultCacheBehavior, ForwardedValues, Cookies
+    DistributionConfig, ViewerCertificate, DefaultCacheBehavior
 import custom_resources.ssm
 import custom_resources.acm
 import custom_resources.cognito
@@ -124,22 +124,21 @@ param_create_own_cloudfront = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(param_create_own_cloudfront, "Create own CloudFront distribution")
 
-cookies = template.add_parameter(Parameter(
-    "Cookies",
-    Type=constants.COMMA_DELIMITED_LIST,
-    Default="refresh_token",
-    Description="Comma delimited list of Cookies that will be used in cache key and forwarded to the origin. \
-        Stack will fail if list is empty while using 'Forward-list' as 'Cookie behaviour'",
+cache_policy_id = template.add_parameter(Parameter(
+    "CachePolicyId",
+    Type=constants.STRING,
+    Default="4135ea2d-6df8-44a3-9df3-4b5a84be39ad",  # Managed-CachingDisabled
+    Description="Cache policy ID to use for the CloudFront distribution.",
 ))
-template.set_parameter_label(cookies, "Comma delimited list of Cookies to forward.")
+template.set_parameter_label(cache_policy_id, "Cache policy ID to use for the CloudFront distribution.")
 
-headers = template.add_parameter(Parameter(
-    "Headers",
-    Type=constants.COMMA_DELIMITED_LIST,
-    Default="Authorization,Host",
-    Description="Comma delimited list of Headers that will be used in cache key and forwarded to the origin.",
+origin_policy_id = template.add_parameter(Parameter(
+    "OriginPolicyId",
+    Type=constants.STRING,
+    Default="216adef6-5c7f-47e4-b989-5492eafa07d3",  # Managed-AllViewer
+    Description="Origin policy ID to use for the CloudFront distribution.",
 ))
-template.set_parameter_label(headers, "Comma delimited list of Headers to forward.")
+template.set_parameter_label(origin_policy_id, "Origin policy ID to use for the CloudFront distribution.")
 
 use_domain_name = template.add_parameter(Parameter(
     "UseDomainName",
@@ -734,14 +733,8 @@ cf_distribution = template.add_resource(Distribution(
         DefaultCacheBehavior=DefaultCacheBehavior(
             ViewerProtocolPolicy='redirect-to-https',  # HTTPS required. Cookies need to be sent securely
             TargetOriginId='default',
-            ForwardedValues=ForwardedValues(
-                Headers=Ref(headers),
-                QueryString=True,
-                Cookies=Cookies(
-                    Forward='whitelist',
-                    WhitelistedNames=Ref(cookies),  # Cookies can be edited in the Cookies parameter
-                ),
-            ),
+            CachePolicyId=Ref(cache_policy_id),
+            OriginRequestPolicyId=Ref(origin_policy_id),
             AllowedMethods=['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT'],  # /delegate sends POST
         ),
         ViewerCertificate=ViewerCertificate(
