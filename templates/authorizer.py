@@ -323,6 +323,7 @@ lambda_role = template.add_resource(iam.Role(
                         "Effect": "Allow",
                         "Action": [
                             "lambda:GetFunction",
+                            "lambda:ListTags",
                         ],
                         "Resource": "*",
                     },
