@@ -1,10 +1,9 @@
 """
 Validator stack.
 """
-from troposphere import Template, constants, Parameter, awslambda, Ref, Output, GetAtt
+from troposphere import Template, constants, Parameter, awslambda, Ref, Output
 
 import custom_resources.awslambda
-import custom_resources.cloudformation
 import cfnutils.output
 
 
@@ -36,31 +35,15 @@ param_s3_key = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(param_s3_key, "Lambda S3 key")
 
-param_config_bucket = template.add_parameter(Parameter(
-    "ConfigBucket",
-    Default="",
-    Type=constants.STRING,
-    Description="Name of the configuration bucket",
-))
-template.set_parameter_label(param_config_bucket, "Lambda Config S3 bucket")
-
-cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags(
-    "CfnTags",
-    Set={
-        'ConfigBucket': Ref(param_config_bucket),
-    },
-))
-
 validator_lambda = template.add_resource(awslambda.Function(
     "ValidatorLambda",
     Code=awslambda.Code(
         S3Bucket=Ref(param_s3_bucket_name),
         S3Key=Ref(param_s3_key),
     ),
-    Runtime='nodejs14.x',
+    Runtime='nodejs22.x',
     Handler='index.handler',
     Role=Ref(param_role),
-    Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 
 validator_version = template.add_resource(custom_resources.awslambda.Version(

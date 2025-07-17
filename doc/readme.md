@@ -208,7 +208,7 @@ since it only contains non-secret information:
  * The expiration time of the access
 
  * The username of the person that generated the token
- 
+
  * A free-text field describing the granted access
 
 Since the party issuing tokens, and the party verifying tokens are the same, we
@@ -231,13 +231,7 @@ Cache-key][CF-cache-cookie].
 
 Normally, you can configure a generic Lambda function via Environment Variables.
 Lambda@Edge is tricky in this regard, since it does not support Environment
-Variables. We worked around this issue by abusing the Tags.
-
-The configuration itself is stored in an S3 bucket as JSON files. The name of
-this S3 bucket is passed as a regular environment variable to the Python Lambda
-functions, but as a Tag to the Lambda@Edge function. The Lambda@Edge function
-performs a `lambda:GetFunction` on itself (it can find out its own name from the
-`context` object at runtime) to read its own Tags.
+Variables. In order protect this critical internet-facing infrastructure, we limit dependencies to other services. Config is stored locally and can be updated based on environment (account id) with specific config files. It is critical to keep this configuration in sync with reality.
 
 
 Code
