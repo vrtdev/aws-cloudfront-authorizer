@@ -12,77 +12,20 @@
 "use strict";
 
 const JWT = require('jsonwebtoken');
-const AWS = require('aws-sdk');
+const { SSMClient, GetParameterCommand } = require('@aws-sdk/client-ssm');const fs = require('fs')
 const querystring = require('querystring');
 const url = require('url');
 
 
-function asyncLambdaGetFunction(param, service_param = {}) {
-    // Async wrapper around the Lambda GetFunction API call
-    return new Promise(function(resolve, reject) {
-        const lambda = new AWS.Lambda(service_param);
-        lambda.getFunction(param, function(err, data) {
-            if(err !== null) { reject(err); }
-            else { resolve(data); }
-        });
-    });
-}
-
-function asyncS3GetObject(param) {
-    // Async wrapper around the S3 GetObject API call
-    return new Promise(function(resolve, reject) {
-        const s3 = new AWS.S3();
-        s3.getObject(param, function(err, data) {
-            if(err !== null) { reject(err); }
-            else { resolve(data); }
-        });
-    });
-}
-
-async function get_config_bucket(context) {
-    /* Lambda@Edge does not support environment parameters.
-     * We use Tags as workaround. This function gets the value of the tag.
-     */
-    const dot_location = context.functionName.indexOf('.');
-    const functionName_without_region = context.functionName.substring(dot_location + 1);
-    const lambda_description = await asyncLambdaGetFunction({
-            'FunctionName': functionName_without_region,
-        }, {
-            region: 'us-east-1',  // Lambda@Edge is always us-east-1
-        }
-    );
-    return lambda_description.Tags['ConfigBucket'];
-}
 async function get_config_(context) {
-    let config = {  // Default settings, keep in sync with Lambda-code!
-        'function_arn': context['invokedFunctionArn'],
-
-        'parameter_store_region': 'eu-west-1',
-        'parameter_store_parameter_name': '/authorizer/jwt-secret',
-
-        'set_cookie_path': '/auth-89CE3FEF-FCF6-43B3-9DBA-7C410CAAE220/set-cookie',
-        'cookie_name_access_token': 'authorizer_access',
-        'cookie_name_no_redirect': 'authorizer_no_redirect',
-
-        'authorize_url': 'https://authorizer.example.org/authorize',
+    const accountId = context.invokedFunctionArn.split(':')[4];
+    const accountSpecificConfigPath = `./config-${accountId}.json`;
+    let config = require('./config.json');
+    if(fs.existsSync(accountSpecificConfigPath)) {
+        let accountSpecificConfig = require(accountSpecificConfigPath);
+        config = { ...config, ...accountSpecificConfig};
     };
-    const config_bucket = await get_config_bucket(context);
-    try {
-        const config_response = await asyncS3GetObject({
-            'Bucket': config_bucket,
-            'Key': 'config.json',
-        });
-        const body = config_response.Body.toString('utf-8');
-        console.log("Retrieved config from S3:");
-        console.log(body);
-        const parsed_body = JSON.parse(body);
-        for(let key in parsed_body) {
-            config[key] = parsed_body[key];
-        }
-    } catch(e) {
-        console.log("Could not retrieve config from S3. Using defaults.");
-        console.log(e);
-    }
+    config['function_arn'] = context['invokedFunctionArn'];
     return config;
 }
 function get_config_promise(context) {
@@ -92,22 +35,19 @@ function get_config_promise(context) {
     return get_config_promise.cache
 }
 
-function get_jwt_secret_promise(region, param_name) {
-    if(typeof get_jwt_secret_promise.cache === 'undefined') {
-        get_jwt_secret_promise.cache = new Promise(function(resolve, reject) {
-            const ssm = new AWS.SSM({
-                'region': region,
-            });
-            ssm.getParameter({
-                    'Name': param_name,
-                    'WithDecryption': true,
-                },
-                function(err, data) {
-                    if(err !== null) { reject(err); }
-                    else { resolve(data['Parameter']['Value']); }
-                }
-            );
-        });
+async function getSSMParameter(parameter_name, parameter_region) {
+    const client = new SSMClient({ region: parameter_region });
+    const command = new GetParameterCommand({
+        Name: parameter_name,
+        WithDecryption: true,
+    });
+    const response = await client.send(command);
+    return response.Parameter.Value;
+}
+
+async function get_jwt_secret_promise(region, param_name) {
+    if (typeof get_jwt_secret_promise.cache === 'undefined') {
+        get_jwt_secret_promise.cache = await getSSMParameter(param_name, region)
     }
     return get_jwt_secret_promise.cache;
 }
