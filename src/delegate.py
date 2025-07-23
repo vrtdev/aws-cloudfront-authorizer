@@ -104,12 +104,22 @@ def handler(event, context: LambdaContext) -> dict:
             if not domains.issubset(refresh_token['domains']):
                 return bad_request('', 'domain requested outside refresh_token')
 
+        # Validate no commas in new subject to avoid future join ambiguity
+        if ',' in subject:
+            return bad_request('', 'subject contains invalid comma')
+
+        existing_sub = refresh_token.get('sub', [])
+        if isinstance(existing_sub, str):
+            existing_sub = [x.strip() for x in existing_sub.split(',')] # Convert string to list
+        elif isinstance(existing_sub, list):
+            pass  # Already a list, no change needed
+
         delegate_token = {
             'iat': int(time.time()),
             'exp': exp,
             'domains': list(domains),
             'azp': refresh_token['azp'],  # Authorized Party
-            'sub': refresh_token.get('sub', []) + [subject],  # subject
+            'sub': ','.join(existing_sub + [subject]),  # sub must be string adhering to jwt spec: https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.2
         }
         logger.info({"message": "Issuing JWT", "jwt": delegate_token})
         raw_delegate_token = jwt.encode(
