@@ -104,18 +104,15 @@ def handler(event, context: LambdaContext) -> dict:
             if not domains.issubset(refresh_token['domains']):
                 return bad_request('', 'domain requested outside refresh_token')
 
-        # Normalize and validate no commas in subject or existing sub chain to avoid join ambiguity
+        # Validate no commas in new subject to avoid future join ambiguity
         if ',' in subject:
             return bad_request('', 'subject contains invalid comma')
 
         existing_sub = refresh_token.get('sub', [])
         if isinstance(existing_sub, str):
-            if ',' in existing_sub:
-                return bad_request('', 'existing sub chain string contains invalid comma')
-            existing_sub = [existing_sub]  # Convert string to single-element list
+            existing_sub = [x.strip() for x in existing_sub.split(',')] # Convert string to list
         elif isinstance(existing_sub, list):
-            if any(',' in s for s in existing_sub if isinstance(s, str)):
-                return bad_request('', 'existing sub chain array contains invalid comma')
+            pass  # Already a list, no change needed
 
         delegate_token = {
             'iat': int(time.time()),
