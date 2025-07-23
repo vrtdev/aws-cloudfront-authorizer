@@ -20,6 +20,7 @@ def handler(event, context) -> dict:
             raw_grant,
             get_grant_jwt_secret(),
             algorithms=['HS256'],
+            options={'require': [], 'verify_sub': False},  # Disable validation for now until sub field are all strings.
         )
         assert 'exp' in grant
         assert 'azp' in grant
