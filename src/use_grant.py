@@ -4,7 +4,13 @@ import time
 
 import jwt
 
-from utils import bad_request, get_grant_jwt_secret, generate_cookie, get_config, get_refresh_token_jwt_secret
+from utils import (
+    bad_request,
+    generate_cookie,
+    get_config,
+    get_grant_jwt_secret,
+    get_refresh_token_jwt_secret,
+)
 
 
 def handler(event, context) -> dict:

@@ -2,6 +2,7 @@ from unittest import mock
 
 import authorize
 import utils
+
 from .utils import gen_refresh_token
 
 

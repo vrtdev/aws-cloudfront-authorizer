@@ -1,17 +1,49 @@
 """Authorizer stack."""
-from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
-    Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, kms, iam, s3, dynamodb, \
-    ImportValue, Not, And, Condition, If, AWS_NO_VALUE
-from troposphere.cloudfront import Origin, CustomOriginConfig, Distribution, \
-    DistributionConfig, ViewerCertificate, DefaultCacheBehavior
-import custom_resources.ssm
-import custom_resources.acm
-import custom_resources.cognito
-import custom_resources.cloudformation
-import custom_resources.s3
-import cfnutils.mappings
 import cfnutils.kms
+import cfnutils.mappings
 import cfnutils.output
+import custom_resources.acm
+import custom_resources.cloudformation
+import custom_resources.cognito
+import custom_resources.s3
+import custom_resources.ssm
+from troposphere import (
+    AWS_NO_VALUE,
+    AWS_REGION,
+    AWS_STACK_NAME,
+    And,
+    Condition,
+    Equals,
+    Export,
+    FindInMap,
+    GetAtt,
+    If,
+    ImportValue,
+    Join,
+    Not,
+    Output,
+    Parameter,
+    Ref,
+    Sub,
+    Template,
+    apigateway,
+    awslambda,
+    constants,
+    dynamodb,
+    iam,
+    kms,
+    route53,
+    s3,
+    serverless,
+)
+from troposphere.cloudfront import (
+    CustomOriginConfig,
+    DefaultCacheBehavior,
+    Distribution,
+    DistributionConfig,
+    Origin,
+    ViewerCertificate,
+)
 
 template = Template()
 
@@ -439,9 +471,7 @@ template.add_resource(iam.PolicyType(
             "Effect": "Allow",
             "Resource": [
                 Sub(
-                    "arn:aws:ssm:${{AWS::Region}}:${{AWS::AccountId}}:parameter${{{param}}}".format(
-                        param=p.title,
-                    ))
+                    f"arn:aws:ssm:${{AWS::Region}}:${{AWS::AccountId}}:parameter${{{p.title}}}")
                 for p in [jwt_secret_parameter]
             ],
         }],

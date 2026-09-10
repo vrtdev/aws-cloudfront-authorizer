@@ -1,12 +1,26 @@
-from troposphere import Template, cloudfront, constants, Sub, Join, Parameter, Ref, Output, GetAtt, \
-    Equals, route53, FindInMap, AWS_REGION, ImportValue, s3
+import cfnutils.mappings
+import cfnutils.output
 import custom_resources.acm
 import custom_resources.cloudformation
 import custom_resources.dynamodb
 import custom_resources.s3
-import cfnutils.mappings
-import cfnutils.output
-
+from troposphere import (
+    AWS_REGION,
+    Equals,
+    FindInMap,
+    GetAtt,
+    ImportValue,
+    Join,
+    Output,
+    Parameter,
+    Ref,
+    Sub,
+    Template,
+    cloudfront,
+    constants,
+    route53,
+    s3,
+)
 
 template = Template()
 

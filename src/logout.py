@@ -6,7 +6,14 @@ import jwt
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
-from utils import generate_cookie, get_config, bad_request, get_csrf_jwt_secret, get_raw_refresh_token, NotLoggedIn
+from utils import (
+    NotLoggedIn,
+    bad_request,
+    generate_cookie,
+    get_config,
+    get_csrf_jwt_secret,
+    get_raw_refresh_token,
+)
 
 logger = Logger()
 

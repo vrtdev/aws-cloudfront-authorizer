@@ -4,8 +4,17 @@ import time
 
 import jwt
 
-from utils import NotLoggedIn, BadRequest, InternalServerError, internal_server_error, cognito_url, \
-    get_state_jwt_secret, get_csrf_jwt_secret, get_raw_refresh_token, parse_raw_refresh_token
+from utils import (
+    BadRequest,
+    InternalServerError,
+    NotLoggedIn,
+    cognito_url,
+    get_csrf_jwt_secret,
+    get_raw_refresh_token,
+    get_state_jwt_secret,
+    internal_server_error,
+    parse_raw_refresh_token,
+)
 
 
 def handler(event, context) -> dict:

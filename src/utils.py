@@ -3,7 +3,6 @@ import os
 import sys
 import time
 import traceback
-import typing
 from http import cookies
 from urllib.parse import urlencode
 
@@ -30,7 +29,7 @@ class Config:
         self.group_table = "groups"
 
     def update(self, settings_dict: dict):
-        for attr in vars(self).keys():
+        for attr in vars(self):
             if attr in settings_dict:
                 setattr(self, attr, settings_dict[attr])
 
@@ -48,7 +47,7 @@ def get_config() -> Config:
         body = response['Body'].read()
         config = json.loads(body)
         c.update(config)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"s3.GetObject(Bucket={bucket}, Key={CONFIG_KEY}) failed, continuing with defaults:")
         traceback.print_exception(type(e), e, e.__traceback__, file=sys.stdout)
     return c
@@ -101,8 +100,8 @@ def get_csrf_jwt_secret() -> str:
 
 
 def canonicalize_headers(
-        headers: typing.Union[typing.Dict[str, str], typing.List[typing.Tuple[str, str]]]
-) -> typing.Dict[str, typing.List[str]]:
+    headers: dict[str, str] | list[tuple[str, str]]
+) -> dict[str, list[str]]:
     """
     HTTP headers are case-insensitive. Join equivalent headers together.
     """
@@ -112,7 +111,7 @@ def canonicalize_headers(
             for k, v in headers.items()
         ]
 
-    canonical_headers = dict()
+    canonical_headers = {}
     for name, value in headers:
         name = name.lower()
         if name not in canonical_headers:
@@ -122,7 +121,7 @@ def canonicalize_headers(
     return canonical_headers
 
 
-def generate_cookie(key: str, value: str, max_age: int = None, path: str = None) -> str:
+def generate_cookie(key: str, value: str, max_age: int | None = None, path: str | None = None) -> str:
     """
     Generate the string usable in a Set-Cookie:-header.
     """
@@ -258,7 +257,7 @@ def get_refresh_token(event) -> dict:
     return parse_raw_refresh_token(raw_refresh_token)  # may raise
 
 
-def get_domains() -> typing.List[str]:
+def get_domains() -> list[str]:
     domains = []
     scan_paginator = dynamodb_client.get_paginator('scan')
     response_iterator = scan_paginator.paginate(
@@ -270,7 +269,6 @@ def get_domains() -> typing.List[str]:
                 domains.append(domain_entry['domain']['S'])
             except KeyError:
                 logger.exception("Invalid domain in DynamoDB: " + repr(domain_entry))
-                pass
     return domains
 
 

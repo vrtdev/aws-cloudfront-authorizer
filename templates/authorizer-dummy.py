@@ -1,9 +1,8 @@
 """Authorizer Dummy stack."""
-from troposphere import Template, Sub, GetAtt
-
 import cfnutils.output
 import custom_resources.cloudformation
 import custom_resources.ssm
+from troposphere import GetAtt, Sub, Template
 
 template = Template(Description="Authorizer dummy stack for prod")
 

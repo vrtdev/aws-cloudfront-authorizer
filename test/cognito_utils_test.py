@@ -5,7 +5,6 @@ import pytest
 
 from src import cognito_utils
 
-
 id_token = "eyJraWQiOiJTVUxMd0xFeWthcVpCbHpYQityR0pZY0h6Q1Y2SHZ2ZXhSZk5oZVptZW1BPSIsImFsZyI6IlJTMjU2In0.eyJhd" \
            "F9oYXNoIjoiTWU4NjYzazVNRGhDcGxhRDF4R1hEUSIsInN1YiI6Ijg0NGE0MDEwLTBlYjEtNGY3Yy1hOGM5LTMyYjFmNzZlND" \
            "hhYiIsImF1ZCI6IjIzZW1xbjBibTU4bmVqdXZsOWp1NXVnNTBtIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE1MzA" \

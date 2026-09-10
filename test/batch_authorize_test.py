@@ -2,6 +2,7 @@ import json
 from unittest import mock
 
 import batch_authorize
+
 from .utils import gen_refresh_token
 
 
