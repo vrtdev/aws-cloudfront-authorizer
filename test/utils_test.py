@@ -27,14 +27,14 @@ def test_canon_header():
 
 def test_refresh_token_no_cookie():
     with pytest.raises(utils.NotLoggedIn):
-        token = utils.get_refresh_token({
+        utils.get_refresh_token({
             'headers': {},
         })
 
 
 def test_refresh_token_other_cookie():
     with pytest.raises(utils.NotLoggedIn):
-        token = utils.get_refresh_token({
+        utils.get_refresh_token({
             'headers': {
                 'Cookie': 'foo=bar',
             },
@@ -43,7 +43,7 @@ def test_refresh_token_other_cookie():
 
 def test_refresh_token_invalid_token():
     with mock.patch('src.utils.get_refresh_token_jwt_secret', return_value="secret"), pytest.raises(utils.BadRequest):
-        token = utils.get_refresh_token({
+        utils.get_refresh_token({
             'headers': {
                 'Cookie': f"{utils.get_config().cookie_name_refresh_token}=foobar",
             },
@@ -62,7 +62,7 @@ def test_refresh_token_expired_token():
         algorithm='HS256',
     )
     with mock.patch('src.utils.get_refresh_token_jwt_secret', return_value="secret"), pytest.raises(utils.NotLoggedIn):
-        token = utils.get_refresh_token({
+        utils.get_refresh_token({
             'headers': {
                 'Cookie': f"{utils.get_config().cookie_name_refresh_token}={raw_token}",
             },

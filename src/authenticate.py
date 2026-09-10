@@ -21,8 +21,10 @@ from utils import (
 
 logger = Logger()
 
-class InternalServerError(Exception): pass
-class BadRequest(Exception): pass
+class InternalServerError(Exception):
+    pass
+class BadRequest(Exception):
+    pass
 
 
 def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
@@ -56,7 +58,7 @@ def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
         )
     except requests.exceptions.ConnectionError:
         logger.exception({"message": "Connection error to Cognito"})
-        raise InternalServerError()
+        raise InternalServerError() from None
 
     if token_response.status_code != 200:
         try:
@@ -89,10 +91,10 @@ def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
         )
     except requests.exceptions.RequestException:
         logger.exception({"message": "Connection error to Cognito"})
-        raise InternalServerError()
+        raise InternalServerError() from None
     except jwt.InvalidTokenError:
         logger.exception({"message": "id_token invalid"})
-        raise InternalServerError()
+        raise InternalServerError() from None
 
     logger.info("Cognito ID token is valid")
 

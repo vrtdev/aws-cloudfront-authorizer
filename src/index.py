@@ -1,3 +1,4 @@
+import contextlib
 import json
 import os
 import time
@@ -33,10 +34,8 @@ def handler(event, context) -> dict:
         azp = refresh_token['azp']  # Mandatory
         sub = refresh_token.get('sub', [])  # optional
 
-        try:
+        with contextlib.suppress(KeyError):
             domains = refresh_token['domains']
-        except KeyError:
-            pass
     except (NotLoggedIn, BadRequest):
         pass
     except InternalServerError as e:

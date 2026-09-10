@@ -214,9 +214,12 @@ def redirect_to_cognito(state: str = '') -> dict:
     }
 
 
-class NotLoggedIn(Exception): pass
-class BadRequest(Exception): pass
-class InternalServerError(Exception): pass
+class NotLoggedIn(Exception):
+    pass
+class BadRequest(Exception):
+    pass
+class InternalServerError(Exception):
+    pass
 
 
 def get_raw_refresh_token(event) -> str:
@@ -226,7 +229,7 @@ def get_raw_refresh_token(event) -> str:
         raw_refresh_token = request_cookies[get_config().cookie_name_refresh_token].value
     except (KeyError, IndexError):
         logger.exception("No refresh_token cookie found")
-        raise NotLoggedIn()
+        raise NotLoggedIn() from None
     return raw_refresh_token
 
 
@@ -240,10 +243,10 @@ def parse_raw_refresh_token(raw_refresh_token: str) -> dict:
         logger.info({"message": "Valid refresh_token found", "jwt": refresh_token})
     except jwt.ExpiredSignatureError:
         logger.exception("Expired token")
-        raise NotLoggedIn()
+        raise NotLoggedIn() from None
     except jwt.InvalidTokenError:
         logger.exception("Invalid token")
-        raise BadRequest("Could not decode token")
+        raise BadRequest("Could not decode token") from None
     return refresh_token
 
 

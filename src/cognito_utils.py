@@ -1,3 +1,4 @@
+import contextlib
 import functools
 
 import jwt
@@ -6,10 +7,8 @@ import requests
 # Use pure python implementation for crypto
 from jwt_rsa_algo import RsaAlgorithm
 
-try:
+with contextlib.suppress(ValueError):  # Assume already registered
     jwt.register_algorithm('RS256', RsaAlgorithm(RsaAlgorithm.SHA256))
-except ValueError:
-    pass  # Assume already registered
 
 
 @functools.lru_cache(maxsize=1)
