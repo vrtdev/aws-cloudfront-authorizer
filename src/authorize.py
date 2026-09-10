@@ -1,15 +1,25 @@
-import time
-from urllib.parse import urlsplit, urlunsplit, urlencode
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 import jwt
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
+from utils import (
+    BadRequest,
+    InternalServerError,
+    NotLoggedIn,
+    access_token_from_refresh_token,
+    bad_request,
+    get_config,
+    get_refresh_token,
+    get_state_jwt_secret,
+    internal_server_error,
+    is_allowed_domain,
+    redirect_to_cognito,
+)
+
 logger = Logger()
 
-from utils import get_config, bad_request, get_access_token_jwt_secret, redirect_to_cognito, NotLoggedIn, BadRequest, \
-    InternalServerError, internal_server_error, get_refresh_token, get_state_jwt_secret, is_allowed_domain, \
-    access_token_from_refresh_token
 
 @logger.inject_lambda_context
 def handler(event, context: LambdaContext) -> dict:
@@ -45,15 +55,15 @@ def handler(event, context: LambdaContext) -> dict:
         logger.error(f"{redirect_uri} is not an allowed domain")
         return bad_request('', f"{redirect_uri} is not an allowed domain")
 
-    if 'domains' in refresh_token:  # delegated token with domain restrictions
-        if redirect_uri_comp.netloc not in refresh_token['domains']:
-            logger.error(f"{redirect_uri} is not an allowed domain for this refresh token")
-            return bad_request('', f"{redirect_uri} is not an allowed domain for this refresh token")
+    # delegated token with domain restrictions
+    if 'domains' in refresh_token and redirect_uri_comp.netloc not in refresh_token['domains']:
+        logger.error(f"{redirect_uri} is not an allowed domain for this refresh token")
+        return bad_request('', f"{redirect_uri} is not an allowed domain for this refresh token")
 
     try:
         access_token = access_token_from_refresh_token(
             refresh_token,
-            redirect_uri_comp.netloc
+            redirect_uri_comp.netloc,
         )
     except BadRequest as e:
         return bad_request('', e)

@@ -3,10 +3,10 @@ import re
 import time
 
 import jwt
-
-from utils import get_access_token_jwt_secret, bad_request, is_allowed_domain
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
+
+from utils import bad_request, get_access_token_jwt_secret, is_allowed_domain
 
 logger = Logger()
 

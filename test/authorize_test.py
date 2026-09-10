@@ -2,12 +2,13 @@ from unittest import mock
 
 import authorize
 import utils
+
 from .utils import gen_refresh_token
 
 
 def test_no_redirect_uri():
     resp = authorize.handler({}, None)
-    assert 400 == resp['statusCode']
+    assert resp['statusCode'] == 400
 
 
 def test_not_logged_in():
@@ -20,7 +21,7 @@ def test_not_logged_in():
                 'redirect_uri': 'https://example.org/',
             },
         }, None)
-        assert 302 == resp['statusCode']
+        assert resp['statusCode'] == 302
         assert cognito_url == resp['headers']['Location']
 
 
@@ -31,7 +32,7 @@ def test_bad_request():
                 'redirect_uri': 'https://example.org/',
             },
         }, None)
-        assert 400 == resp['statusCode']
+        assert resp['statusCode'] == 400
 
 
 def test_normal():
@@ -44,7 +45,7 @@ def test_normal():
                 'redirect_uri': 'https://example.org/',
             },
         }, None)
-        assert 302 == resp['statusCode']
+        assert resp['statusCode'] == 302
         assert resp['headers']['Location'].startswith('https://example.org/')
 
 
@@ -58,7 +59,7 @@ def test_wrong_domain():
                 'redirect_uri': 'https://example.org/',
             },
         }, None)
-        assert 400 == resp['statusCode']
+        assert resp['statusCode'] == 400
 
 
 def test_no_exp():
@@ -72,7 +73,7 @@ def test_no_exp():
                 'redirect_uri': 'https://example.org/',
             },
         }, None)
-        assert 400 == resp['statusCode']
+        assert resp['statusCode'] == 400
 
 
 def test_no_azp():
@@ -86,7 +87,7 @@ def test_no_azp():
                 'redirect_uri': 'https://example.org/',
             },
         }, None)
-        assert 400 == resp['statusCode']
+        assert resp['statusCode'] == 400
 
 
 def test_unlisted_domain():
@@ -99,4 +100,4 @@ def test_unlisted_domain():
                 'redirect_uri': 'https://example.com/',
             },
         }, None)
-        assert 400 == resp['statusCode']
+        assert resp['statusCode'] == 400

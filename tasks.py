@@ -3,9 +3,21 @@
 import fnmatch
 import glob
 import os
+import sys
 
 from invoke import task
 
+
+def glob_templates(filename):
+    templates = [x for x in glob.glob(filename)]
+    if len(templates) == 0:
+        print(f"File `{filename}` not found")
+        sys.exit(1)
+    templates = [x for x in templates if x[-3:] == '.py']
+    if len(templates) == 0:
+        print(f"File `{filename}` doesn't seem to match any Python files, skipping")
+        sys.exit(0)
+    return templates
 
 @task(
     default=True,
@@ -17,14 +29,14 @@ from invoke import task
 )
 def build(ctx, warnings='once::DeprecationWarning', filename=None):
     """Build all templates."""
-    import sys
-    import subprocess
     import inspect
+    import subprocess
+    import sys
     if filename is not None:
         templates = [x for x in glob.glob(filename)]
         if len(templates) == 0:
-            print("File `{}` not found".format(filename))
-            exit(1)
+            print(f"File `{filename}` not found")
+            sys.exit(1)
     else:
         print("Building all templates")
         os.chdir(os.path.dirname(os.path.abspath(inspect.stack()[0][1])))
@@ -32,35 +44,28 @@ def build(ctx, warnings='once::DeprecationWarning', filename=None):
 
     rv = 0
     for template in templates:
-        print(" + Executing {0}".format(template))
-        if subprocess.call([sys.executable, '-W{0}'.format(warnings), '{0}'.format(template)]) != 0:
+        print(f" + Executing {template}")
+        if subprocess.call([sys.executable, f'-W{warnings}', f'{template}']) != 0:
             rv = 1
-    exit(rv)
+    sys.exit(rv)
 
 
 @task(
-    aliases=["flake8", "pep8"],
     help={
         'filename': 'File(s) to lint. Supports globbing.',
-        'envdir': 'Specify the python virtual env dir to ignore. Defaults to "venv".',
-        'noglob': 'Disable globbing of filenames. Can give issues in virtual environments',
+        'envdir': 'Does nothing, left for backwards compatibility.',
+        'noglob': 'Does nothing, left for backwards compatibility.',
     },
 )
 def lint(ctx, filename=None, envdir='venv', noglob=False):
-    """Run flake8 python linter."""
-    command = 'flake8 --jobs=1 --exclude .git,' + envdir
+    """Run python linter."""
+    command = ['ruff', 'check']
 
     if filename is not None:
-        if noglob:
-            templates = [filename]
-        else:
-            templates = [x for x in glob.glob(filename)]
-            if len(templates) == 0:
-                print("File `{0}` not found".format(filename))
-                exit(1)
+        templates = glob_templates(filename)
+        command += templates
 
-        command += ' ' + " ".join(templates)
-
+    command = ' '.join(command)
     print("Running command: '" + command + "'")
     ctx.run(command)
 
@@ -77,7 +82,7 @@ def clean(ctx, verbose=False, compiled=False):
     patterns.append('output/*.json')
     patterns.append('output/*/*.json')
     if compiled is True:
-        for root, dirnames, filenames in os.walk('.'):
+        for root, _dirnames, filenames in os.walk('.'):
             for filename in fnmatch.filter(filenames, '*.pyc'):
                 patterns.append(os.path.join(root, filename))
 

@@ -1,10 +1,18 @@
 import json
 
-from utils import bad_request, NotLoggedIn, BadRequest, \
-    InternalServerError, internal_server_error, get_refresh_token, get_domains, \
-    access_token_from_refresh_token
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
+
+from utils import (
+    BadRequest,
+    InternalServerError,
+    NotLoggedIn,
+    access_token_from_refresh_token,
+    bad_request,
+    get_domains,
+    get_refresh_token,
+    internal_server_error,
+)
 
 logger = Logger()
 
@@ -25,10 +33,8 @@ def handler(event, context: LambdaContext) -> dict:
     except InternalServerError as e:
         return internal_server_error('', e)
 
-    if 'domains' in refresh_token:  # delegated token with domain restrictions
-        domains = refresh_token['domains']
-    else:
-        domains = get_domains()
+                                        # delegated token with domain restrictions
+    domains = refresh_token['domains'] if 'domains' in refresh_token else get_domains()
 
     access_tokens = {}
     try:

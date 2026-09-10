@@ -3,12 +3,22 @@ Authorizer parameter stack.
 
 This stack gathers the information needed to use the Authorizer in one place.
 """
-from troposphere import Template, Parameter, Ref, Sub, Output, Export, Join, AWS_STACK_NAME, constants, \
-    GetAtt, ImportValue
-import custom_resources.ssm
-import custom_resources.cloudformation
 import cfnutils.output
-
+import custom_resources.cloudformation
+import custom_resources.ssm
+from troposphere import (
+    AWS_STACK_NAME,
+    Export,
+    GetAtt,
+    ImportValue,
+    Join,
+    Output,
+    Parameter,
+    Ref,
+    Sub,
+    Template,
+    constants,
+)
 
 template = Template()
 

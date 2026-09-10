@@ -1,8 +1,7 @@
 import time
-import typing
 
 
-def gen_refresh_token(domain: typing.Optional[str], exp_in: int = 5):
+def gen_refresh_token(domain: str | None, exp_in: int = 5):
     now = int(time.time())
     token = {
         'iat': now,

@@ -1,0 +1,42 @@
+[project]
+name = "aws-cloudfront-authorizer"
+version = "1.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "invoke>=2.2.1",
+    "pytest",
+    "troposphere>=4.10.1",
+]
+
+[tool.uv]
+package = true
+
+[tool.uv.sources]
+central-helpers = { git = "ssh://git@bitbucket.org/vrt-prod/aws-cloudformation-helpers.git" }
+custom-resources = { git = "https://github.com/vrtdev/custom-resources.git" }
+
+[tool.setuptools]
+packages = [
+    "templates",
+]
+
+[tool.ruff]
+line-length = 140
+indent-width = 4
+
+[tool.ruff.lint]
+extend-select = [
+    "E",
+    "W",
+    "A",
+    "COM",
+    "TID",
+    "B",
+    "SIM",
+    "UP",
+]
+
+[[tool.uv.index]]
+name = "nexus"
+url = "https://nexus.core.a51.be/repository/pypi/simple"
+default = true

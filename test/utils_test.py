@@ -14,41 +14,40 @@ def test_canon_header():
             'Cookie': 'foo',
             'cookie': 'bar',
         }) == {
-            'cookie': ['foo', 'bar']
+            'cookie': ['foo', 'bar'],
         }
 
     assert utils.canonicalize_headers([
             ('Cookie', 'foo'),
             ('cookie', 'bar'),
         ]) == {
-            'cookie': ['foo', 'bar']
+            'cookie': ['foo', 'bar'],
         }
 
 
 def test_refresh_token_no_cookie():
     with pytest.raises(utils.NotLoggedIn):
-        token = utils.get_refresh_token({
-            'headers': {}
+        utils.get_refresh_token({
+            'headers': {},
         })
 
 
 def test_refresh_token_other_cookie():
     with pytest.raises(utils.NotLoggedIn):
-        token = utils.get_refresh_token({
+        utils.get_refresh_token({
             'headers': {
                 'Cookie': 'foo=bar',
-            }
+            },
         })
 
 
 def test_refresh_token_invalid_token():
-    with mock.patch('src.utils.get_refresh_token_jwt_secret', return_value="secret"):
-        with pytest.raises(utils.BadRequest):
-            token = utils.get_refresh_token({
-                'headers': {
-                    'Cookie': f"{utils.get_config().cookie_name_refresh_token}=foobar",
-                }
-            })
+    with mock.patch('src.utils.get_refresh_token_jwt_secret', return_value="secret"), pytest.raises(utils.BadRequest):
+        utils.get_refresh_token({
+            'headers': {
+                'Cookie': f"{utils.get_config().cookie_name_refresh_token}=foobar",
+            },
+        })
 
 
 def test_refresh_token_expired_token():
@@ -62,18 +61,17 @@ def test_refresh_token_expired_token():
         'secret',
         algorithm='HS256',
     )
-    with mock.patch('src.utils.get_refresh_token_jwt_secret', return_value="secret"):
-        with pytest.raises(utils.NotLoggedIn):
-            token = utils.get_refresh_token({
-                'headers': {
-                    'Cookie': f"{utils.get_config().cookie_name_refresh_token}={raw_token}",
-                }
-            })
+    with mock.patch('src.utils.get_refresh_token_jwt_secret', return_value="secret"), pytest.raises(utils.NotLoggedIn):
+        utils.get_refresh_token({
+            'headers': {
+                'Cookie': f"{utils.get_config().cookie_name_refresh_token}={raw_token}",
+            },
+        })
 
 
 def test_refresh_token_valid_token():
     now = time.time()
-    in_token = {'iat': now-1, 'exp': now + 5, 'azp': 'test', }
+    in_token = {'iat': now-1, 'exp': now + 5, 'azp': 'test' }
     raw_token = jwt.encode(
         in_token,
         'secret',
@@ -83,14 +81,14 @@ def test_refresh_token_valid_token():
         token = utils.get_refresh_token({
             'headers': {
                 'Cookie': f"{utils.get_config().cookie_name_refresh_token}={raw_token}",
-            }
+            },
         })
         assert in_token == token
 
 
 def test_refresh_token_unsigned_token():
     now = time.time()
-    in_token = {'iat': now, 'exp': now + 5, 'azp': 'test', }
+    in_token = {'iat': now, 'exp': now + 5, 'azp': 'test' }
     raw_token = \
         jwt.utils.base64url_encode(json.dumps({
             "typ": "JWT",
@@ -100,10 +98,9 @@ def test_refresh_token_unsigned_token():
         jwt.utils.base64url_encode(json.dumps(in_token).encode('utf-8')).decode('utf-8') + \
         '.' + \
         ''  # no signature
-    with mock.patch('src.utils.get_refresh_token_jwt_secret', return_value="secret"):
-        with pytest.raises(utils.BadRequest):
-            utils.get_refresh_token({
-                'headers': {
-                    'Cookie': f"{utils.get_config().cookie_name_refresh_token}={raw_token}",
-                }
-            })
+    with mock.patch('src.utils.get_refresh_token_jwt_secret', return_value="secret"), pytest.raises(utils.BadRequest):
+        utils.get_refresh_token({
+            'headers': {
+                'Cookie': f"{utils.get_config().cookie_name_refresh_token}={raw_token}",
+            },
+        })

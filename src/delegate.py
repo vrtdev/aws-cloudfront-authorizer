@@ -5,12 +5,24 @@ import time
 import urllib.parse
 
 import jwt
-
-from utils import redirect_to_cognito, get_refresh_token, NotLoggedIn, BadRequest, \
-    bad_request, InternalServerError, internal_server_error, \
-    get_grant_jwt_secret, get_state_jwt_secret, get_config, is_allowed_domain, dynamodb_client, get_domains
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
+
+from utils import (
+    BadRequest,
+    InternalServerError,
+    NotLoggedIn,
+    bad_request,
+    dynamodb_client,
+    get_config,
+    get_domains,
+    get_grant_jwt_secret,
+    get_refresh_token,
+    get_state_jwt_secret,
+    internal_server_error,
+    is_allowed_domain,
+    redirect_to_cognito,
+)
 
 logger = Logger()
 
@@ -55,9 +67,8 @@ def handler(event, context: LambdaContext) -> dict:
                 for group_entry in page['Items']:
                     try:
                         groups[group_entry['group']['S']] = group_entry['domains']['SS']
-                    except KeyError as e:
+                    except KeyError:
                         logger.exception("Invalid group in DynamoDB: " + repr(group_entry))
-                        pass
 
         with open(os.path.join(os.path.dirname(__file__), 'delegate.html')) as f:
             html = f.read()
@@ -100,9 +111,8 @@ def handler(event, context: LambdaContext) -> dict:
             if not is_allowed_domain(domain):
                 return bad_request('', 'Unknown domain in request')
 
-        if 'domains' in refresh_token:
-            if not domains.issubset(refresh_token['domains']):
-                return bad_request('', 'domain requested outside refresh_token')
+        if 'domains' in refresh_token and not domains.issubset(refresh_token['domains']):
+            return bad_request('', 'domain requested outside refresh_token')
 
         # Validate no commas in new subject to avoid future join ambiguity
         if ',' in subject:
