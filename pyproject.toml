@@ -4,6 +4,7 @@ version = "1.0.0"
 requires-python = ">=3.12"
 dependencies = [
     "invoke>=2.2.1",
+    "pytest",
     "troposphere>=4.10.1",
 ]
 

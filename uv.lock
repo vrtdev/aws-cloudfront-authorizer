@@ -8,12 +8,14 @@ version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "invoke" },
+    { name = "pytest" },
     { name = "troposphere" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "invoke", specifier = ">=2.2.1" },
+    { name = "pytest" },
     { name = "troposphere", specifier = ">=4.10.1" },
 ]
 
@@ -41,12 +43,73 @@ wheels = [
 ]
 
 [[package]]
+name = "colorama"
+version = "0.4.6"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/colorama/0.4.6/colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44", size = 27697, upload-time = "2022-10-25T02:36:22.414Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/colorama/0.4.6/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
+]
+
+[[package]]
+name = "iniconfig"
+version = "2.3.0"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/iniconfig/2.3.0/iniconfig-2.3.0.tar.gz", hash = "sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730", size = 20503, upload-time = "2025-10-18T21:55:43.219Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/iniconfig/2.3.0/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
+]
+
+[[package]]
 name = "invoke"
 version = "3.0.3"
 source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
 sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/invoke/3.0.3/invoke-3.0.3.tar.gz", hash = "sha256:437b6a622223824380bfb4e64f612711a6b648c795f565efc8625af66fb57f0c", size = 343419, upload-time = "2026-04-07T15:17:48.307Z" }
 wheels = [
     { url = "https://nexus.core.a51.be/repository/pypi/packages/invoke/3.0.3/invoke-3.0.3-py3-none-any.whl", hash = "sha256:f11327165e5cbb89b2ad1d88d3292b5113332c43b8553b494da435d6ec6f5053", size = 160958, upload-time = "2026-04-07T15:17:46.875Z" },
+]
+
+[[package]]
+name = "packaging"
+version = "26.3"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/packaging/26.3/packaging-26.3.tar.gz", hash = "sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79", size = 313412, upload-time = "2026-08-04T18:15:28.737Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/packaging/26.3/packaging-26.3-py3-none-any.whl", hash = "sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c", size = 129956, upload-time = "2026-08-04T18:15:27.159Z" },
+]
+
+[[package]]
+name = "pluggy"
+version = "1.6.0"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/pluggy/1.6.0/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/pluggy/1.6.0/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
+]
+
+[[package]]
+name = "pygments"
+version = "2.21.0"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/pygments/2.21.0/pygments-2.21.0.tar.gz", hash = "sha256:610ca751c9bc2492b38eb9a38a7fbc93edbbb2d7182edaf34e66ae493dee5c8c", size = 5005329, upload-time = "2026-08-17T08:02:48.824Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/pygments/2.21.0/pygments-2.21.0-py3-none-any.whl", hash = "sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9", size = 1250147, upload-time = "2026-08-17T08:02:44.912Z" },
+]
+
+[[package]]
+name = "pytest"
+version = "9.1.1"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "iniconfig" },
+    { name = "packaging" },
+    { name = "pluggy" },
+    { name = "pygments" },
+]
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/pytest/9.1.1/pytest-9.1.1.tar.gz", hash = "sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313", size = 1636369, upload-time = "2026-06-19T10:58:32.857Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/pytest/9.1.1/pytest-9.1.1-py3-none-any.whl", hash = "sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c", size = 386536, upload-time = "2026-06-19T10:58:31.347Z" },
 ]
 
 [[package]]
