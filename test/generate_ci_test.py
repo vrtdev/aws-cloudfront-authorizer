@@ -15,7 +15,7 @@ def test_post():
             'requestContext': { 'identity': { 'caller': "test" }},
             'body': json.dumps(body),
         }, None)
-        assert 200 == resp['statusCode']
+        assert resp['statusCode'] == 200
         ci_token = jwt.decode(resp['body'], 'secret', algorithms=["HS256"], options={"verify_signature": False})
         assert 'example.org' in ci_token['domains']
         assert 'another-example.org' in ci_token['domains']
@@ -30,7 +30,7 @@ def test_post_too_long():
             'requestContext': { 'identity': { 'caller': "test" }},
             'body': json.dumps(body),
         }, None)
-        assert 400 == resp['statusCode']
+        assert resp['statusCode'] == 400
 
 
 def test_post_domain_outside_list():
@@ -42,7 +42,7 @@ def test_post_domain_outside_list():
             'requestContext': { 'identity': { 'caller': "test" }},
             'body': json.dumps(body),
         }, None)
-        assert 400 == resp['statusCode']
+        assert resp['statusCode'] == 400
 
 
 def test_post_no_subject():
@@ -54,4 +54,4 @@ def test_post_no_subject():
             'requestContext': { 'identity': { 'caller': "test" }},
             'body': json.dumps(body),
         }, None)
-        assert 400 == resp['statusCode']
+        assert resp['statusCode'] == 400

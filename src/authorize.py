@@ -63,7 +63,7 @@ def handler(event, context: LambdaContext) -> dict:
     try:
         access_token = access_token_from_refresh_token(
             refresh_token,
-            redirect_uri_comp.netloc
+            redirect_uri_comp.netloc,
         )
     except BadRequest as e:
         return bad_request('', e)

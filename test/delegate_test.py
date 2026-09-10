@@ -13,14 +13,14 @@ def test_no_token():
          mock.patch('utils.get_jwt_secret', return_value='secret'), \
          mock.patch('utils.cognito_url', return_value=cognito_url):
         resp = delegate.handler({}, None)
-        assert 302 == resp['statusCode']
+        assert resp['statusCode'] == 302
         assert cognito_url == resp['headers']['Location']
 
 
 def test_bad_token():
     with mock.patch('delegate.get_refresh_token', side_effect=utils.BadRequest):
         resp = delegate.handler({}, None)
-        assert 400 == resp['statusCode']
+        assert resp['statusCode'] == 400
 
 
 def gen_refresh_token(domain: str, exp_in: int = 5):
@@ -44,7 +44,7 @@ def test_post():
             'httpMethod': 'POST',
             'body': body,
         }, None)
-        assert 200 == resp['statusCode']
+        assert resp['statusCode'] == 200
 
 
 def test_post_too_long():
@@ -58,7 +58,7 @@ def test_post_too_long():
             'httpMethod': 'POST',
             'body': body,
         }, None)
-        assert 400 == resp['statusCode']
+        assert resp['statusCode'] == 400
 
 
 def test_post_domain_outside_list():
@@ -72,7 +72,7 @@ def test_post_domain_outside_list():
             'httpMethod': 'POST',
             'body': body,
         }, None)
-        assert 400 == resp['statusCode']
+        assert resp['statusCode'] == 400
 
 
 def test_domain_outside_token():
@@ -87,7 +87,7 @@ def test_domain_outside_token():
             'httpMethod': 'POST',
             'body': body,
         }, None)
-        assert 400 == resp['statusCode']
+        assert resp['statusCode'] == 400
 
 
 def test_post_no_subject():
@@ -101,7 +101,7 @@ def test_post_no_subject():
             'httpMethod': 'POST',
             'body': body,
         }, None)
-        assert 400 == resp['statusCode']
+        assert resp['statusCode'] == 400
 
 
 def test_sub_delegate():
@@ -116,6 +116,6 @@ def test_sub_delegate():
             'httpMethod': 'POST',
             'body': body,
         }, None)
-        assert 200 == resp['statusCode']
+        assert resp['statusCode'] == 200
         delegate_token = jwt.decode(resp['body'], 'secret', algorithms=["HS256"], options={"verify_signature": False})
         assert 'test1' in delegate_token['sub']

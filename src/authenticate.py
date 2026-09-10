@@ -52,7 +52,7 @@ def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
         token_response = requests.post(
             endpointurl,
             data=post_data,
-            auth=requests.auth.HTTPBasicAuth(client_id, client_secret)
+            auth=requests.auth.HTTPBasicAuth(client_id, client_secret),
         )
     except requests.exceptions.ConnectionError:
         logger.exception({"message": "Connection error to Cognito"})
@@ -73,7 +73,7 @@ def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
             logger.exception({
                 "message": "Uncaught error",
                 "cognito_reply": token_response.text,
-                "backtrace": traceback.format_exc()
+                "backtrace": traceback.format_exc(),
             })
             raise InternalServerError() from e
 
@@ -171,7 +171,7 @@ def handler(event, context: LambdaContext) -> dict:
             'Set-Cookie': generate_cookie(
                 get_config().cookie_name_refresh_token,
                 raw_refresh_token,
-                max_age=int(cognito_token['exp'] - now)
+                max_age=int(cognito_token['exp'] - now),
             ),
         },
         'body': 'Redirecting...',

@@ -25,7 +25,7 @@ jwk = {
                  "iqwtmu3slLOEENce0vNI1SU2WzqxQ9sUKLv0mKWesvF9ukJ8hEN9GYJ2ng6wUtnRlKh8qlIkiBlKogNQiQk21bvk6B"
                  "VX0TWQ_RRlth22zMxdv0VUDNZd8xopy9DSJ9-9jpFidbSY1y24vbeDYewztshsHomAaW2cAzpxmJ12oSs9OgvLROFP"
                  "tbANG7-0netCHeTPaAtXLo_0s-c35gHUziCcxYEM4PR7GZOvX1IUfIvxblG1BNHJAi79cDbw",
-            "use": "sig"
+            "use": "sig",
         },
         {
             "alg": "RS256",
@@ -36,9 +36,9 @@ jwk = {
                  "Eg5mRA4Gu5CHcM88gNB6eFfPUpXT_XxSmRd5AXT9yfTE6lhFNsfxX5v_yl_qDRHEnST0dJm9xL9hGAbe5ZeKHf3HDY"
                  "D-k1lR5TqceEutzJdpJg-grm6VhXvFF52U9ZmfBkA3yi8D_895WSKbHTfGCCKfP4mdF286jrFifGkxu2EK-lCM0dwv"
                  "4l_JZxFB3ds1hkTs5uog1PHzeoBBwSs1aaC6QT_M_whfVBur1TGKRXq0OHaQkPhYo5KR6SXQ",
-            "use": "sig"
-        }
-    ]
+            "use": "sig",
+        },
+    ],
 }
 
 
@@ -63,11 +63,10 @@ def test_jwt_parsing():
 
 
 def test_jwt_parsing_expired():
-    with mock.patch('src.cognito_utils.get_jwt_keys', return_value=jwk):
-        with pytest.raises(jwt.exceptions.ExpiredSignatureError):
-            cognito_utils.validate_cognito_id_token(
-                token=id_token,
-                region='unused because of get_jwt_keys() mock',
-                user_pool_id='unused because of get_jwt_keys() mock',
-                client_id='unused because of get_jwt_keys() mock',
-            )
+    with mock.patch('src.cognito_utils.get_jwt_keys', return_value=jwk), pytest.raises(jwt.exceptions.ExpiredSignatureError):
+        cognito_utils.validate_cognito_id_token(
+            token=id_token,
+            region='unused because of get_jwt_keys() mock',
+            user_pool_id='unused because of get_jwt_keys() mock',
+            client_id='unused because of get_jwt_keys() mock',
+        )

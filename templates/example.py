@@ -63,7 +63,7 @@ param_use_cert = template.add_parameter(Parameter(
     AllowedValues=['yes', 'no'],
     Default='no',  # Default to no, so new stacks request, but don't use certs
     # This avoids stacks failing since the cert is not approved yet
-    Description="Use TLS certificate"
+    Description="Use TLS certificate",
 ))
 template.set_parameter_label(param_use_cert, "Use TLS certificate")
 
@@ -162,7 +162,7 @@ example_distribution = template.add_resource(cloudfront.Distribution(
                 S3OriginConfig=cloudfront.S3OriginConfig(
                     OriginAccessIdentity=Join('', [
                         'origin-access-identity/cloudfront/', Ref(example_bucket_oai),
-                    ])
+                    ]),
                 ),
             ),
         ],
@@ -178,7 +178,7 @@ example_distribution = template.add_resource(cloudfront.Distribution(
             LambdaFunctionAssociations=[
                 cloudfront.LambdaFunctionAssociation(
                     EventType='viewer-request',
-                    LambdaFunctionARN=Ref(param_authorizer_lae_arn)
+                    LambdaFunctionARN=Ref(param_authorizer_lae_arn),
                 ),
             ],
             # Rest of config as per your needs

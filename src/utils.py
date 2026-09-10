@@ -100,7 +100,7 @@ def get_csrf_jwt_secret() -> str:
 
 
 def canonicalize_headers(
-    headers: dict[str, str] | list[tuple[str, str]]
+    headers: dict[str, str] | list[tuple[str, str]],
 ) -> dict[str, list[str]]:
     """
     HTTP headers are case-insensitive. Join equivalent headers together.
@@ -199,7 +199,7 @@ def redirect_to_cognito(state: str = '') -> dict:
         'statusCode': 302,
         'headers': {
             'Location': location,
-            'Content-Type': 'text/html'
+            'Content-Type': 'text/html',
         },
         'body': f"""\
             <html>
