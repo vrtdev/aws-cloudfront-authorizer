@@ -39,6 +39,10 @@ extend-select = [
     "SIM",
     "UP",
 ]
+ignore = [
+    "SIM102",
+    "SIM108",
+]
 
 [[tool.uv.index]]
 name = "nexus"

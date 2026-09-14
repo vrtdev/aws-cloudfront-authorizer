@@ -33,8 +33,10 @@ def handler(event, context: LambdaContext) -> dict:
     except InternalServerError as e:
         return internal_server_error('', e)
 
-                                        # delegated token with domain restrictions
-    domains = refresh_token['domains'] if 'domains' in refresh_token else get_domains()
+    if 'domains' in refresh_token:  # delegated token with domain restrictions
+        domains = refresh_token['domains']
+    else:
+        domains = get_domains()
 
     access_tokens = {}
     try:
