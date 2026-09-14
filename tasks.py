@@ -88,3 +88,19 @@ def clean(ctx, verbose=False, compiled=False):
 
     for pattern in patterns:
         ctx.run(command.format(files=pattern))
+
+@task(
+    help={
+        'filename': 'File(s) to lint. Supports globbing.',
+    },
+)
+def test(ctx, filename=None):
+    """Run pytest."""
+    command = ['pytest']
+
+    if filename is not None:
+        command += [filename]
+
+    command = ' '.join(command)
+    print("Running command: '" + command + "'")
+    ctx.run(command)

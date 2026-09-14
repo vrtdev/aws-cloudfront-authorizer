@@ -3,7 +3,7 @@ from unittest import mock
 
 import batch_authorize
 
-from .utils import gen_refresh_token
+from .test_utils import gen_refresh_token
 
 
 def test_normal():

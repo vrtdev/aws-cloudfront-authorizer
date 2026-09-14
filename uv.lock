@@ -7,16 +7,74 @@ name = "aws-cloudfront-authorizer"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [
+    { name = "aws-lambda-powertools" },
+    { name = "boto3" },
+    { name = "cachetools" },
     { name = "invoke" },
+    { name = "pyjwt" },
     { name = "pytest" },
     { name = "troposphere" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "aws-lambda-powertools" },
+    { name = "boto3" },
+    { name = "cachetools" },
     { name = "invoke", specifier = ">=2.2.1" },
+    { name = "pyjwt" },
     { name = "pytest" },
     { name = "troposphere", specifier = ">=4.10.1" },
+]
+
+[[package]]
+name = "aws-lambda-powertools"
+version = "3.34.0"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+dependencies = [
+    { name = "jmespath" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/aws-lambda-powertools/3.34.0/aws_lambda_powertools-3.34.0.tar.gz", hash = "sha256:75f2c65a5997630666c9c3c495002c1f9d1e9defd3cb6d5d9fc7272b7dc9ef54", size = 800151, upload-time = "2026-08-10T11:26:10.742Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/aws-lambda-powertools/3.34.0/aws_lambda_powertools-3.34.0-py3-none-any.whl", hash = "sha256:ab1354c58085ccecf92e9c548b1336ad5bae72c7ae23e61d2aa0ff15520d679c", size = 957321, upload-time = "2026-08-10T11:26:09.002Z" },
+]
+
+[[package]]
+name = "boto3"
+version = "1.43.93"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+dependencies = [
+    { name = "botocore" },
+    { name = "jmespath" },
+    { name = "s3transfer" },
+]
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/boto3/1.43.93/boto3-1.43.93.tar.gz", hash = "sha256:196bfc8b4c9cd5505f9f7b963e30956db3a00fd47e20dd0ee3574a243c1fb212", size = 112752, upload-time = "2026-09-11T19:23:03.484Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/boto3/1.43.93/boto3-1.43.93-py3-none-any.whl", hash = "sha256:3c948fe231490d446bf90bf3322d1452632107329d3683b37d88b7399bf481a0", size = 140022, upload-time = "2026-09-11T19:23:01.995Z" },
+]
+
+[[package]]
+name = "botocore"
+version = "1.43.93"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+dependencies = [
+    { name = "jmespath" },
+    { name = "python-dateutil" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/botocore/1.43.93/botocore-1.43.93.tar.gz", hash = "sha256:82da355d18a7f784347b00444be33942834651f31b6c5ffef49999cd47364c5e", size = 16103276, upload-time = "2026-09-11T19:22:58.933Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/botocore/1.43.93/botocore-1.43.93-py3-none-any.whl", hash = "sha256:3ca57bb5d26d88b554a74de708a5c991f45306436c91aacca931252d1d4d54ff", size = 15794156, upload-time = "2026-09-11T19:22:55.964Z" },
+]
+
+[[package]]
+name = "cachetools"
+version = "7.1.8"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/cachetools/7.1.8/cachetools-7.1.8.tar.gz", hash = "sha256:1221d547a0b24b7f26fa891d40d488b5258beab9aebd8ed68c729be3af849c43", size = 40909, upload-time = "2026-08-31T19:02:53.985Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/cachetools/7.1.8/cachetools-7.1.8-py3-none-any.whl", hash = "sha256:a81e3844acaa7355b6567f97bd67a94a14ec3a9bc2cbbdae45b9592cc036775b", size = 16842, upload-time = "2026-08-31T19:02:52.554Z" },
 ]
 
 [[package]]
@@ -70,6 +128,15 @@ wheels = [
 ]
 
 [[package]]
+name = "jmespath"
+version = "1.1.0"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/jmespath/1.1.0/jmespath-1.1.0.tar.gz", hash = "sha256:472c87d80f36026ae83c6ddd0f1d05d4e510134ed462851fd5f754c8c3cbb88d", size = 27377, upload-time = "2026-01-22T16:35:26.279Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/jmespath/1.1.0/jmespath-1.1.0-py3-none-any.whl", hash = "sha256:a5663118de4908c91729bea0acadca56526eb2698e83de10cd116ae0f4e97c64", size = 20419, upload-time = "2026-01-22T16:35:24.919Z" },
+]
+
+[[package]]
 name = "packaging"
 version = "26.3"
 source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
@@ -97,6 +164,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pyjwt"
+version = "2.14.0"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/pyjwt/2.14.0/pyjwt-2.14.0.tar.gz", hash = "sha256:77283c83fb56ecf566a886c757a714bc83668e38156de2cce8263302f42e0b86", size = 113177, upload-time = "2026-09-11T13:11:54.638Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/pyjwt/2.14.0/pyjwt-2.14.0-py3-none-any.whl", hash = "sha256:ad0cef71c756a56e74863c2919cf0985f72decbcfcb550ee2f422e7c62b5eedc", size = 32896, upload-time = "2026-09-11T13:11:53.409Z" },
+]
+
+[[package]]
 name = "pytest"
 version = "9.1.1"
 source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
@@ -110,6 +186,18 @@ dependencies = [
 sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/pytest/9.1.1/pytest-9.1.1.tar.gz", hash = "sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313", size = 1636369, upload-time = "2026-06-19T10:58:32.857Z" }
 wheels = [
     { url = "https://nexus.core.a51.be/repository/pypi/packages/pytest/9.1.1/pytest-9.1.1-py3-none-any.whl", hash = "sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c", size = 386536, upload-time = "2026-06-19T10:58:31.347Z" },
+]
+
+[[package]]
+name = "python-dateutil"
+version = "2.9.0.post0"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+dependencies = [
+    { name = "six" },
+]
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/python-dateutil/2.9.0.post0/python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3", size = 342432, upload-time = "2024-03-01T18:36:20.211Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/python-dateutil/2.9.0.post0/python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427", size = 229892, upload-time = "2024-03-01T18:36:18.57Z" },
 ]
 
 [[package]]
@@ -159,6 +247,18 @@ wheels = [
 ]
 
 [[package]]
+name = "s3transfer"
+version = "0.19.2"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+dependencies = [
+    { name = "botocore" },
+]
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/s3transfer/0.19.2/s3transfer-0.19.2.tar.gz", hash = "sha256:ba0309fd86be3c27dbf78cdd813c13c5e1df16e5874b99d2535ebbdfb9892993", size = 165592, upload-time = "2026-07-22T19:30:44.432Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/s3transfer/0.19.2/s3transfer-0.19.2-py3-none-any.whl", hash = "sha256:d8168eccca828cbb2cd573675333f3bddd254313a9c42494b84c76b539e8ba25", size = 90216, upload-time = "2026-07-22T19:30:43.251Z" },
+]
+
+[[package]]
 name = "six"
 version = "1.17.0"
 source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
@@ -177,4 +277,22 @@ dependencies = [
 sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/troposphere/4.10.2/troposphere-4.10.2.tar.gz", hash = "sha256:24978785ac4ce43a9c03348eaf393bedd552eb86e8f4d405e36990cd11695c53", size = 545896, upload-time = "2026-05-16T18:43:30.761Z" }
 wheels = [
     { url = "https://nexus.core.a51.be/repository/pypi/packages/troposphere/4.10.2/troposphere-4.10.2-py3-none-any.whl", hash = "sha256:e74dbbc39ac375e19431bcf3cf181482313c71bfe1b8778d1ddbcb46a85b5a9c", size = 630411, upload-time = "2026-05-16T18:43:28.814Z" },
+]
+
+[[package]]
+name = "typing-extensions"
+version = "4.16.0"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/typing-extensions/4.16.0/typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5", size = 113555, upload-time = "2026-07-02T08:40:05.92Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/typing-extensions/4.16.0/typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8", size = 45571, upload-time = "2026-07-02T08:40:04.659Z" },
+]
+
+[[package]]
+name = "urllib3"
+version = "2.7.0"
+source = { registry = "https://nexus.core.a51.be/repository/pypi/simple" }
+sdist = { url = "https://nexus.core.a51.be/repository/pypi/packages/urllib3/2.7.0/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
+wheels = [
+    { url = "https://nexus.core.a51.be/repository/pypi/packages/urllib3/2.7.0/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
 ]

@@ -6,6 +6,10 @@ dependencies = [
     "invoke>=2.2.1",
     "pytest",
     "troposphere>=4.10.1",
+    "PyJWT",
+    "aws_lambda_powertools",
+    "boto3",
+    "cachetools",
 ]
 
 [tool.uv]
@@ -40,3 +44,16 @@ extend-select = [
 name = "nexus"
 url = "https://nexus.core.a51.be/repository/pypi/simple"
 default = true
+
+[tool.pytest]
+minversion = "9.0"
+addopts = ["-ra", "-q"]
+testpaths = [
+    "test",
+]
+pythonpath = [
+    "src"
+]
+filterwarnings = [
+    'ignore::UserWarning',
+]

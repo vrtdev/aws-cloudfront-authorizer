@@ -6,6 +6,8 @@ import jwt
 import delegate
 import utils
 
+from .test_utils import gen_refresh_token
+
 
 def test_no_token():
     cognito_url = 'https://cognito/'
@@ -23,14 +25,14 @@ def test_bad_token():
         assert resp['statusCode'] == 400
 
 
-def gen_refresh_token(domain: str, exp_in: int = 5):
-    now = int(time.time())
-    return {
-        'iat': now,
-        'exp': now + exp_in,
-        'azp': 'test',
-        'domains': [domain],
-    }
+# def gen_refresh_token(domain: str, exp_in: int = 5):
+#     now = int(time.time())
+#     return {
+#         'iat': now,
+#         'exp': now + exp_in,
+#         'azp': 'test',
+#         'domains': [domain],
+#     }
 
 
 def test_post():
