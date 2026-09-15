@@ -4,12 +4,17 @@ version = "1.0.0"
 requires-python = ">=3.12"
 dependencies = [
     "invoke>=2.2.1",
-    "pytest",
     "troposphere>=4.10.1",
     "PyJWT",
     "aws_lambda_powertools",
     "boto3",
     "cachetools",
+    "requests",
+    "rsa",
+    "pytest",
+    "ruff",
+    "central-helpers",
+    "custom-resources",
 ]
 
 [tool.uv]

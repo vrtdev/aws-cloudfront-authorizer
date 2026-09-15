@@ -2,26 +2,31 @@ import time
 from unittest import mock
 
 import jwt
+import pytest
 
 import delegate
 import utils
 
-from .test_utils import gen_refresh_token
+from .test_utils import LambdaContext, gen_refresh_token
 
 
-def test_no_token():
+@pytest.fixture
+def lambda_context() -> LambdaContext:
+    return LambdaContext()
+
+def test_no_token(lambda_context):
     cognito_url = 'https://cognito/'
     with mock.patch('delegate.get_refresh_token', side_effect=utils.NotLoggedIn), \
          mock.patch('utils.get_jwt_secret', return_value='secret'), \
          mock.patch('utils.cognito_url', return_value=cognito_url):
-        resp = delegate.handler({}, None)
+        resp = delegate.handler({}, lambda_context)
         assert resp['statusCode'] == 302
         assert cognito_url == resp['headers']['Location']
 
 
-def test_bad_token():
+def test_bad_token(lambda_context):
     with mock.patch('delegate.get_refresh_token', side_effect=utils.BadRequest):
-        resp = delegate.handler({}, None)
+        resp = delegate.handler({}, lambda_context)
         assert resp['statusCode'] == 400
 
 
@@ -35,7 +40,7 @@ def test_bad_token():
 #     }
 
 
-def test_post():
+def test_post(lambda_context):
     now = int(time.time())
     refresh_token = gen_refresh_token('example.org')
     body = f"exp={now+1}&subject=sub&example.org=on"
@@ -45,11 +50,11 @@ def test_post():
         resp = delegate.handler({
             'httpMethod': 'POST',
             'body': body,
-        }, None)
+        }, lambda_context)
         assert resp['statusCode'] == 200
 
 
-def test_post_too_long():
+def test_post_too_long(lambda_context):
     now = int(time.time())
     refresh_token = gen_refresh_token('example.org')
     body = f"exp={now+10}&subject=sub&example.org=on"
@@ -59,11 +64,11 @@ def test_post_too_long():
         resp = delegate.handler({
             'httpMethod': 'POST',
             'body': body,
-        }, None)
+        }, lambda_context)
         assert resp['statusCode'] == 400
 
 
-def test_post_domain_outside_list():
+def test_post_domain_outside_list(lambda_context):
     now = int(time.time())
     refresh_token = gen_refresh_token('example.com')
     body = f"exp={now+1}&subject=sub&example.com=on"
@@ -73,11 +78,11 @@ def test_post_domain_outside_list():
         resp = delegate.handler({
             'httpMethod': 'POST',
             'body': body,
-        }, None)
+        }, lambda_context)
         assert resp['statusCode'] == 400
 
 
-def test_domain_outside_token():
+def test_domain_outside_token(lambda_context):
     now = int(time.time())
     refresh_token = gen_refresh_token('example.org')
     body = f"exp={now+1}&subject=sub&example.com=on"
@@ -88,11 +93,11 @@ def test_domain_outside_token():
         resp = delegate.handler({
             'httpMethod': 'POST',
             'body': body,
-        }, None)
+        }, lambda_context)
         assert resp['statusCode'] == 400
 
 
-def test_post_no_subject():
+def test_post_no_subject(lambda_context):
     now = int(time.time())
     refresh_token = gen_refresh_token('example.org')
     body = f"exp={now+1}&subject=&example.org=on"
@@ -102,11 +107,11 @@ def test_post_no_subject():
         resp = delegate.handler({
             'httpMethod': 'POST',
             'body': body,
-        }, None)
+        }, lambda_context)
         assert resp['statusCode'] == 400
 
 
-def test_sub_delegate():
+def test_sub_delegate(lambda_context):
     now = int(time.time())
     refresh_token = gen_refresh_token('example.org')
     refresh_token['sub'] = ['test1']
@@ -117,7 +122,7 @@ def test_sub_delegate():
         resp = delegate.handler({
             'httpMethod': 'POST',
             'body': body,
-        }, None)
+        }, lambda_context)
         assert resp['statusCode'] == 200
         delegate_token = jwt.decode(resp['body'], 'secret', algorithms=["HS256"], options={"verify_signature": False})
         assert 'test1' in delegate_token['sub']
