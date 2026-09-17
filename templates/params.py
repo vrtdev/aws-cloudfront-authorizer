@@ -9,7 +9,6 @@ import custom_resources.ssm
 from troposphere import (
     AWS_STACK_NAME,
     Export,
-    GetAtt,
     ImportValue,
     Join,
     Output,
@@ -38,7 +37,7 @@ param_laearn = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(param_laearn, "Lambda@Edge ARN")
 
-cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
+# cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
 
 
 # Don't simply import-output the Lambda@Edge ARN, but do it via a Parameter
@@ -49,7 +48,7 @@ lae_arn = template.add_resource(custom_resources.ssm.Parameter(
     Name=Sub('/${AWS::StackName}/lae-arn'),
     Type="String",
     Value=Ref(param_laearn),
-    Tags=GetAtt(cloudformation_tags, 'TagList'),
+    # Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 template.add_output(Output(
     "LaeArnParameter",

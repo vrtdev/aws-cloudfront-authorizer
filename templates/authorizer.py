@@ -215,7 +215,7 @@ ATTACH_WAF = template.add_condition('AttachWaf', Not(Equals(Ref(waf_arn), '')))
 
 # Resources
 
-cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
+# cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
 
 user_pool_client = template.add_resource(custom_resources.cognito.UserPoolClient(
     "UserPoolClient",
@@ -438,7 +438,7 @@ auth_key = template.add_resource(kms.Key(
             },
         ],
     },
-    Tags=GetAtt(cloudformation_tags, 'TagList'),
+    # Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 
 auth_key_alias = template.add_resource(kms.Alias(
@@ -454,7 +454,7 @@ jwt_secret_parameter = template.add_resource(custom_resources.ssm.Parameter(
     Type="SecureString",
     KeyId=Ref(auth_key),
     RandomValue={"Serial": '1'},  # Change this to force a new random value
-    Tags=GetAtt(cloudformation_tags, 'TagList'),
+    # Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 
 template.add_resource(iam.PolicyType(
@@ -690,7 +690,7 @@ acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCertificate(
     "AcmCert",
     Region='us-east-1',  # Api gateway/Cloudfront is in us-east-1
     DomainName=domain_name,
-    Tags=GetAtt(cloudformation_tags, 'TagList'),
+    # Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 template.add_output(Output(
     "AcmCertDnsRecords",
@@ -702,7 +702,7 @@ regional_acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCerti
     "RegionalAcmCert",
     Region=Ref(AWS_REGION),
     DomainName=domain_name,
-    Tags=GetAtt(cloudformation_tags, 'TagList'),
+    # Tags=GetAtt(cloudformation_tags, 'TagList'),
     Condition=CREATE_REGIONAL_CERT,
 ))
 template.add_output(Output(

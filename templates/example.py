@@ -67,7 +67,7 @@ param_use_cert = template.add_parameter(Parameter(
 ))
 template.set_parameter_label(param_use_cert, "Use TLS certificate")
 
-cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
+# cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
 
 domain_name = Join('.', [Ref(param_label), Ref(param_hosted_zone_name)])
 
@@ -75,7 +75,7 @@ acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCertificate(
     "AcmCert",
     Region='us-east-1',  # Api gateway is in us-east-1
     DomainName=domain_name,
-    Tags=GetAtt(cloudformation_tags, 'TagList'),
+    # Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 template.add_output(Output(
     "AcmCertDnsRecords",
@@ -195,7 +195,7 @@ example_distribution = template.add_resource(cloudfront.Distribution(
             SslSupportMethod='sni-only',
         ),
     ),
-    Tags=GetAtt(cloudformation_tags, 'TagList'),
+    # Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 
 hosted_zone_map = "HostedZoneMap"
