@@ -41,6 +41,17 @@ if [ ! -f "venv/bin/pip" ]; then
     python3 -m venv venv
 fi
 
+echo "--------------------  PRE pip compile   ----------------------"
+cat requirements.txt
+
+echo "--------------------  pip compile       ----------------------"
+uv pip compile pyproject.toml -o requirements.txt
+
+echo "--------------------  POST pip compile  ----------------------"
+cat requirements.txt
+
+echo "--------------------                    ----------------------"
+
 # make sure build tools are up to date
 venv/bin/pip install --upgrade wheel pip
 venv/bin/pip install -r "${SRC_DIR}/requirements.txt" -t "${BUILD_DIR}"
