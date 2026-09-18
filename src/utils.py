@@ -228,7 +228,7 @@ def get_raw_refresh_token(event) -> str:
         request_cookies = cookies.BaseCookie(headers['cookie'][0])
         raw_refresh_token = request_cookies[get_config().cookie_name_refresh_token].value
     except (KeyError, IndexError):
-        logger.exception("No refresh_token cookie found")
+        logger.info({"message": "Login failed", "reason": "No refresh_token cookie found"})
         raise NotLoggedIn() from None
     return raw_refresh_token
 
@@ -242,10 +242,10 @@ def parse_raw_refresh_token(raw_refresh_token: str) -> dict:
         )
         logger.info({"message": "Valid refresh_token found", "jwt": refresh_token})
     except jwt.ExpiredSignatureError:
-        logger.exception("Expired token")
+        logger.info({"message": "Login failed", "reason": "Expired token"})
         raise NotLoggedIn() from None
     except jwt.InvalidTokenError:
-        logger.exception("Invalid token")
+        logger.info({"message": "Login failed", "reason": "Invalid token"})
         raise BadRequest("Could not decode token") from None
     return refresh_token
 
