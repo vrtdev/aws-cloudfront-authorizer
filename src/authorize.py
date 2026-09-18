@@ -23,6 +23,9 @@ logger = Logger()
 
 @logger.inject_lambda_context
 def handler(event, context: LambdaContext) -> dict:
+    if event is None:
+        return bad_request('', "No event object provided")
+
     request_ip = event.get('requestContext', {}).get('identity', {}).get('sourceIp', '')
     logger.append_keys(request_id=context.aws_request_id, request_ip=request_ip)
     try:
