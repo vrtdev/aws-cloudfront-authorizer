@@ -4,7 +4,13 @@ import time
 
 import jwt
 
-from utils import bad_request, get_grant_jwt_secret, generate_cookie, get_config, get_refresh_token_jwt_secret
+from utils import (
+    bad_request,
+    generate_cookie,
+    get_config,
+    get_grant_jwt_secret,
+    get_refresh_token_jwt_secret,
+)
 
 
 def handler(event, context) -> dict:
@@ -33,7 +39,7 @@ def handler(event, context) -> dict:
     raw_refresh_token = jwt.encode(
         refresh_token,
         get_refresh_token_jwt_secret(),
-        algorithm='HS256'
+        algorithm='HS256',
     )
 
     with open(os.path.join(os.path.dirname(__file__), 'use_grant.html')) as f:

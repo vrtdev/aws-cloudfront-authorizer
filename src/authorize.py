@@ -1,19 +1,29 @@
-import time
-from urllib.parse import urlsplit, urlunsplit, urlencode
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 import jwt
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
+from utils import (
+    BadRequest,
+    InternalServerError,
+    NotLoggedIn,
+    access_token_from_refresh_token,
+    bad_request,
+    get_config,
+    get_refresh_token,
+    get_state_jwt_secret,
+    internal_server_error,
+    is_allowed_domain,
+    redirect_to_cognito,
+)
+
 logger = Logger()
 
-from utils import get_config, bad_request, get_access_token_jwt_secret, redirect_to_cognito, NotLoggedIn, BadRequest, \
-    InternalServerError, internal_server_error, get_refresh_token, get_state_jwt_secret, is_allowed_domain, \
-    access_token_from_refresh_token
 
 @logger.inject_lambda_context
 def handler(event, context: LambdaContext) -> dict:
-    request_ip = event['requestContext']['identity']['sourceIp']
+    request_ip = event.get('requestContext', {}).get('identity', {}).get('sourceIp', '')
     logger.append_keys(request_id=context.aws_request_id, request_ip=request_ip)
     try:
         redirect_uri = event['queryStringParameters']['redirect_uri']
@@ -53,7 +63,7 @@ def handler(event, context: LambdaContext) -> dict:
     try:
         access_token = access_token_from_refresh_token(
             refresh_token,
-            redirect_uri_comp.netloc
+            redirect_uri_comp.netloc,
         )
     except BadRequest as e:
         return bad_request('', e)

@@ -1,17 +1,49 @@
 """Authorizer stack."""
-from troposphere import Template, Parameter, Ref, Sub, GetAtt, Output, Export, Join, AWS_STACK_NAME, apigateway, \
-    Equals, route53, FindInMap, AWS_REGION, serverless, constants, awslambda, kms, iam, s3, dynamodb, \
-    ImportValue, Not, And, Condition, If, AWS_NO_VALUE
-from troposphere.cloudfront import Origin, CustomOriginConfig, Distribution, \
-    DistributionConfig, ViewerCertificate, DefaultCacheBehavior
-import custom_resources.ssm
-import custom_resources.acm
-import custom_resources.cognito
-import custom_resources.cloudformation
-import custom_resources.s3
-import cfnutils.mappings
 import cfnutils.kms
+import cfnutils.mappings
 import cfnutils.output
+import custom_resources.acm
+import custom_resources.cloudformation
+import custom_resources.cognito
+import custom_resources.s3
+import custom_resources.ssm
+from troposphere import (
+    AWS_NO_VALUE,
+    AWS_REGION,
+    AWS_STACK_NAME,
+    And,
+    Condition,
+    Equals,
+    Export,
+    FindInMap,
+    GetAtt,
+    If,
+    ImportValue,
+    Join,
+    Not,
+    Output,
+    Parameter,
+    Ref,
+    Sub,
+    Template,
+    apigateway,
+    awslambda,
+    constants,
+    dynamodb,
+    iam,
+    kms,
+    route53,
+    s3,
+    serverless,
+)
+from troposphere.cloudfront import (
+    CustomOriginConfig,
+    DefaultCacheBehavior,
+    Distribution,
+    DistributionConfig,
+    Origin,
+    ViewerCertificate,
+)
 
 template = Template()
 
@@ -183,7 +215,7 @@ ATTACH_WAF = template.add_condition('AttachWaf', Not(Equals(Ref(waf_arn), '')))
 
 # Resources
 
-cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
+# cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
 
 user_pool_client = template.add_resource(custom_resources.cognito.UserPoolClient(
     "UserPoolClient",
@@ -406,7 +438,7 @@ auth_key = template.add_resource(kms.Key(
             },
         ],
     },
-    Tags=GetAtt(cloudformation_tags, 'TagList'),
+    # Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 
 auth_key_alias = template.add_resource(kms.Alias(
@@ -422,7 +454,7 @@ jwt_secret_parameter = template.add_resource(custom_resources.ssm.Parameter(
     Type="SecureString",
     KeyId=Ref(auth_key),
     RandomValue={"Serial": '1'},  # Change this to force a new random value
-    Tags=GetAtt(cloudformation_tags, 'TagList'),
+    # Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 
 template.add_resource(iam.PolicyType(
@@ -439,9 +471,7 @@ template.add_resource(iam.PolicyType(
             "Effect": "Allow",
             "Resource": [
                 Sub(
-                    "arn:aws:ssm:${{AWS::Region}}:${{AWS::AccountId}}:parameter${{{param}}}".format(
-                        param=p.title,
-                    ))
+                    f"arn:aws:ssm:${{AWS::Region}}:${{AWS::AccountId}}:parameter${{{p.title}}}")
                 for p in [jwt_secret_parameter]
             ],
         }],
@@ -449,7 +479,7 @@ template.add_resource(iam.PolicyType(
 ))
 
 common_lambda_options = {
-    'Runtime': 'python3.9',
+    'Runtime': 'python3.14',
     'Timeout': 10,  # Cold start sometimes takes longer than the default 3 seconds
     'CodeUri': serverless.S3Location('unused', Bucket=Ref(param_s3_bucket_name), Key=Ref(param_s3_key)),
     'Environment': awslambda.Environment(
@@ -660,7 +690,7 @@ acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCertificate(
     "AcmCert",
     Region='us-east-1',  # Api gateway/Cloudfront is in us-east-1
     DomainName=domain_name,
-    Tags=GetAtt(cloudformation_tags, 'TagList'),
+    # Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 template.add_output(Output(
     "AcmCertDnsRecords",
@@ -672,7 +702,7 @@ regional_acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCerti
     "RegionalAcmCert",
     Region=Ref(AWS_REGION),
     DomainName=domain_name,
-    Tags=GetAtt(cloudformation_tags, 'TagList'),
+    # Tags=GetAtt(cloudformation_tags, 'TagList'),
     Condition=CREATE_REGIONAL_CERT,
 ))
 template.add_output(Output(

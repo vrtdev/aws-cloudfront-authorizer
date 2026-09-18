@@ -1,16 +1,24 @@
 from unittest import mock
 
+import pytest
+
 import authorize
 import utils
-from .utils import gen_refresh_token
+
+from .test_utils import LambdaContext, gen_refresh_token
 
 
-def test_no_redirect_uri():
-    resp = authorize.handler({}, None)
-    assert 400 == resp['statusCode']
+@pytest.fixture
+def lambda_context() -> LambdaContext:
+    return LambdaContext()
 
 
-def test_not_logged_in():
+def test_no_redirect_uri(lambda_context):
+    resp = authorize.handler({}, lambda_context)
+    assert resp['statusCode'] == 400
+
+
+def test_not_logged_in(lambda_context):
     cognito_url = 'https://cognito/'
     with mock.patch('authorize.get_refresh_token', side_effect=utils.NotLoggedIn), \
             mock.patch('utils.get_jwt_secret', return_value='secret'), \
@@ -19,22 +27,22 @@ def test_not_logged_in():
             'queryStringParameters': {
                 'redirect_uri': 'https://example.org/',
             },
-        }, None)
-        assert 302 == resp['statusCode']
+        }, lambda_context)
+        assert resp['statusCode'] == 302
         assert cognito_url == resp['headers']['Location']
 
 
-def test_bad_request():
+def test_bad_request(lambda_context):
     with mock.patch('authorize.get_refresh_token', side_effect=utils.BadRequest):
         resp = authorize.handler({
             'queryStringParameters': {
                 'redirect_uri': 'https://example.org/',
             },
-        }, None)
-        assert 400 == resp['statusCode']
+        }, lambda_context)
+        assert resp['statusCode'] == 400
 
 
-def test_normal():
+def test_normal(lambda_context):
     refresh_token = gen_refresh_token('example.org')
     with mock.patch('authorize.get_refresh_token', return_value=refresh_token), \
             mock.patch('utils.get_jwt_secret', return_value='secret'), \
@@ -43,12 +51,12 @@ def test_normal():
             'queryStringParameters': {
                 'redirect_uri': 'https://example.org/',
             },
-        }, None)
-        assert 302 == resp['statusCode']
+        }, lambda_context)
+        assert resp['statusCode'] == 302
         assert resp['headers']['Location'].startswith('https://example.org/')
 
 
-def test_wrong_domain():
+def test_wrong_domain(lambda_context):
     refresh_token = gen_refresh_token('example.com')
     with mock.patch('authorize.get_refresh_token', return_value=refresh_token), \
             mock.patch('utils.get_jwt_secret', return_value='secret'), \
@@ -57,11 +65,11 @@ def test_wrong_domain():
             'queryStringParameters': {
                 'redirect_uri': 'https://example.org/',
             },
-        }, None)
-        assert 400 == resp['statusCode']
+        }, lambda_context)
+        assert resp['statusCode'] == 400
 
 
-def test_no_exp():
+def test_no_exp(lambda_context):
     refresh_token = gen_refresh_token('example.org')
     del refresh_token['exp']  # no exp
     with mock.patch('authorize.get_refresh_token', return_value=refresh_token), \
@@ -71,11 +79,11 @@ def test_no_exp():
             'queryStringParameters': {
                 'redirect_uri': 'https://example.org/',
             },
-        }, None)
-        assert 400 == resp['statusCode']
+        }, lambda_context)
+        assert resp['statusCode'] == 400
 
 
-def test_no_azp():
+def test_no_azp(lambda_context):
     refresh_token = gen_refresh_token('example.org')
     del refresh_token['azp']
     with mock.patch('authorize.get_refresh_token', return_value=refresh_token), \
@@ -85,11 +93,11 @@ def test_no_azp():
             'queryStringParameters': {
                 'redirect_uri': 'https://example.org/',
             },
-        }, None)
-        assert 400 == resp['statusCode']
+        }, lambda_context)
+        assert resp['statusCode'] == 400
 
 
-def test_unlisted_domain():
+def test_unlisted_domain(lambda_context):
     refresh_token = gen_refresh_token(domain=None)
     with mock.patch('authorize.get_refresh_token', return_value=refresh_token), \
             mock.patch('utils.get_jwt_secret', return_value='secret'), \
@@ -98,5 +106,5 @@ def test_unlisted_domain():
             'queryStringParameters': {
                 'redirect_uri': 'https://example.com/',
             },
-        }, None)
-        assert 400 == resp['statusCode']
+        }, lambda_context)
+        assert resp['statusCode'] == 400

@@ -1,11 +1,9 @@
 """
 Validator stack.
 """
-from troposphere import Template, constants, Parameter, awslambda, Ref, Output
-
-import custom_resources.awslambda
 import cfnutils.output
-
+import custom_resources.awslambda
+from troposphere import Output, Parameter, Ref, Template, awslambda, constants
 
 template = Template()
 

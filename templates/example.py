@@ -1,12 +1,26 @@
-from troposphere import Template, cloudfront, constants, Sub, Join, Parameter, Ref, Output, GetAtt, \
-    Equals, route53, FindInMap, AWS_REGION, ImportValue, s3
+import cfnutils.mappings
+import cfnutils.output
 import custom_resources.acm
 import custom_resources.cloudformation
 import custom_resources.dynamodb
 import custom_resources.s3
-import cfnutils.mappings
-import cfnutils.output
-
+from troposphere import (
+    AWS_REGION,
+    Equals,
+    FindInMap,
+    GetAtt,
+    ImportValue,
+    Join,
+    Output,
+    Parameter,
+    Ref,
+    Sub,
+    Template,
+    cloudfront,
+    constants,
+    route53,
+    s3,
+)
 
 template = Template()
 
@@ -49,11 +63,11 @@ param_use_cert = template.add_parameter(Parameter(
     AllowedValues=['yes', 'no'],
     Default='no',  # Default to no, so new stacks request, but don't use certs
     # This avoids stacks failing since the cert is not approved yet
-    Description="Use TLS certificate"
+    Description="Use TLS certificate",
 ))
 template.set_parameter_label(param_use_cert, "Use TLS certificate")
 
-cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
+# cloudformation_tags = template.add_resource(custom_resources.cloudformation.Tags("CfnTags"))
 
 domain_name = Join('.', [Ref(param_label), Ref(param_hosted_zone_name)])
 
@@ -61,7 +75,7 @@ acm_cert = template.add_resource(custom_resources.acm.DnsValidatedCertificate(
     "AcmCert",
     Region='us-east-1',  # Api gateway is in us-east-1
     DomainName=domain_name,
-    Tags=GetAtt(cloudformation_tags, 'TagList'),
+    # Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 template.add_output(Output(
     "AcmCertDnsRecords",
@@ -148,7 +162,7 @@ example_distribution = template.add_resource(cloudfront.Distribution(
                 S3OriginConfig=cloudfront.S3OriginConfig(
                     OriginAccessIdentity=Join('', [
                         'origin-access-identity/cloudfront/', Ref(example_bucket_oai),
-                    ])
+                    ]),
                 ),
             ),
         ],
@@ -164,7 +178,7 @@ example_distribution = template.add_resource(cloudfront.Distribution(
             LambdaFunctionAssociations=[
                 cloudfront.LambdaFunctionAssociation(
                     EventType='viewer-request',
-                    LambdaFunctionARN=Ref(param_authorizer_lae_arn)
+                    LambdaFunctionARN=Ref(param_authorizer_lae_arn),
                 ),
             ],
             # Rest of config as per your needs
@@ -181,7 +195,7 @@ example_distribution = template.add_resource(cloudfront.Distribution(
             SslSupportMethod='sni-only',
         ),
     ),
-    Tags=GetAtt(cloudformation_tags, 'TagList'),
+    # Tags=GetAtt(cloudformation_tags, 'TagList'),
 ))
 
 hosted_zone_map = "HostedZoneMap"

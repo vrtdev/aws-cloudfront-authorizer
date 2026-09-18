@@ -6,13 +6,20 @@ import jwt
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
-from utils import generate_cookie, get_config, bad_request, get_csrf_jwt_secret, get_raw_refresh_token, NotLoggedIn
+from utils import (
+    NotLoggedIn,
+    bad_request,
+    generate_cookie,
+    get_config,
+    get_csrf_jwt_secret,
+    get_raw_refresh_token,
+)
 
 logger = Logger()
 
 @logger.inject_lambda_context
 def handler(event, context: LambdaContext) -> dict:
-    request_ip = event['requestContext']['identity']['sourceIp']
+    request_ip = event.get('requestContext', {}).get('identity', {}).get('sourceIp', '')
     logger.append_keys(request_id=context.aws_request_id, request_ip=request_ip)
 
     logger.info({"message": "Processing POST request", "body": event['body']})

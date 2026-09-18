@@ -6,17 +6,25 @@ import urllib.parse
 import jwt
 import requests
 import requests.auth
-
-from cognito_utils import validate_cognito_id_token
-from utils import bad_request, internal_server_error, get_refresh_token_jwt_secret, get_state_jwt_secret, \
-    generate_cookie, get_config
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
+from cognito_utils import validate_cognito_id_token
+from utils import (
+    bad_request,
+    generate_cookie,
+    get_config,
+    get_refresh_token_jwt_secret,
+    get_state_jwt_secret,
+    internal_server_error,
+)
+
 logger = Logger()
 
-class InternalServerError(Exception): pass
-class BadRequest(Exception): pass
+class InternalServerError(Exception):
+    pass
+class BadRequest(Exception):
+    pass
 
 
 def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
@@ -46,11 +54,11 @@ def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
         token_response = requests.post(
             endpointurl,
             data=post_data,
-            auth=requests.auth.HTTPBasicAuth(client_id, client_secret)
+            auth=requests.auth.HTTPBasicAuth(client_id, client_secret),
         )
-    except requests.exceptions.ConnectionError as e:
-        logger.exception({"message": "Connection error to Cognito", "exception": e})
-        raise InternalServerError()
+    except requests.exceptions.ConnectionError:
+        logger.exception({"message": "Connection error to Cognito"})
+        raise InternalServerError() from None
 
     if token_response.status_code != 200:
         try:
@@ -67,8 +75,7 @@ def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
             logger.exception({
                 "message": "Uncaught error",
                 "cognito_reply": token_response.text,
-                "exception": e,
-                "backtrace": traceback.format_exc()
+                "backtrace": traceback.format_exc(),
             })
             raise InternalServerError() from e
 
@@ -82,12 +89,12 @@ def exchange_cognito_code(event: dict, cognito_code: str) -> dict:
             user_pool_id=os.environ['COGNITO_USER_POOL_ID'],
             client_id=client_id,
         )
-    except requests.exceptions.RequestException as e:
-        logger.exception({"message": "Connection error to Cognito", "exception": e})
-        raise InternalServerError()
-    except jwt.InvalidTokenError as e:
-        logger.exception({"message": "id_token invalid", "exception": e})
-        raise InternalServerError()
+    except requests.exceptions.RequestException:
+        logger.exception({"message": "Connection error to Cognito"})
+        raise InternalServerError() from None
+    except jwt.InvalidTokenError:
+        logger.exception({"message": "id_token invalid"})
+        raise InternalServerError() from None
 
     logger.info("Cognito ID token is valid")
 
@@ -154,8 +161,8 @@ def handler(event, context: LambdaContext) -> dict:
                 f"redirect_uri={urllib.parse.quote_plus(state['redirect_uri'])}"
         else:
             raise ValueError(f"Invalid action `{state['action']}`")
-    except (KeyError, ValueError) as e:
-        logger.exception({"message": "state is invalid", "exception": e})
+    except (KeyError, ValueError):
+        logger.exception({"message": "state is invalid"})
         return internal_server_error()
 
     return {
@@ -166,7 +173,7 @@ def handler(event, context: LambdaContext) -> dict:
             'Set-Cookie': generate_cookie(
                 get_config().cookie_name_refresh_token,
                 raw_refresh_token,
-                max_age=int(cognito_token['exp'] - now)
+                max_age=int(cognito_token['exp'] - now),
             ),
         },
         'body': 'Redirecting...',
