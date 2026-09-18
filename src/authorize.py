@@ -28,8 +28,10 @@ def handler(event, context: LambdaContext) -> dict:
 
     request_ip = event.get('requestContext', {}).get('identity', {}).get('sourceIp', '')
     logger.append_keys(request_id=context.aws_request_id, request_ip=request_ip)
+
+    query_string_parameters = event.get('queryStringParameters', {})
     try:
-        redirect_uri = event['queryStringParameters']['redirect_uri']
+        redirect_uri = query_string_parameters['redirect_uri']
     except KeyError:
         return bad_request('', "No redirect_uri parameter found")
 
