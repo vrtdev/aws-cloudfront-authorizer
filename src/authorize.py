@@ -29,7 +29,7 @@ def handler(event, context: LambdaContext) -> dict:
     request_ip = event.get('requestContext', {}).get('identity', {}).get('sourceIp', '')
     logger.append_keys(request_id=context.aws_request_id, request_ip=request_ip)
 
-    query_string_parameters = event.get('queryStringParameters', {})
+    query_string_parameters = event.get('queryStringParameters') or {}
     try:
         redirect_uri = query_string_parameters['redirect_uri']
     except KeyError:
